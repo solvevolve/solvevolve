@@ -10,6 +10,7 @@ var DonutLayout = /** @class */ (function () {
     DonutLayout.donuts_hands = DonutLayout.block * 5;
     DonutLayout.number_garbage = DonutLayout.block * 3;
     DonutLayout.donut_cases_padding = 50;
+    DonutLayout.hands_speed = 0.8;
     return DonutLayout;
 }());
 var State;
@@ -34,35 +35,59 @@ var Game = /** @class */ (function () {
         this.game.stage.backgroundColor = 0x3f7cb6;
     };
     Game.prototype.create = function () {
-        this.centerRootGroup();
-        this.initHud();
-        this.initDonutHands();
-        this.initNumber();
-        this.initDonutCases();
-        this.initGarbage();
-    };
-    Game.prototype.initNumber = function () {
-        this.number = this.game.add.group(this.root, "number_garbage");
-        this.number.y = this.donuts_hands.y + DonutLayout.donuts_hands;
-    };
-    Game.prototype.initDonutCases = function () {
         var _this = this;
+        var ppux = this.game.width / DonutLayout.width;
+        var ppuy = this.game.height / DonutLayout.height;
+        var ppu = Math.min(ppux, ppuy);
+        this.root = this.game.add.group();
+        this.root.x = ppux > ppuy ? this.game.width / 2 - ppu * DonutLayout.width / 2 : 0;
+        this.root.y = ppuy > ppux ? this.game.height / 2 - ppu * DonutLayout.height / 2 : 0;
+        this.root.scale.setTo(ppu, ppu);
+        this.timer = this.game.add.text(DonutLayout.donut_cases_padding, 0, "1:30", null, this.root);
+        this.title = this.game.add.text(DonutLayout.block * 4, 0, "Decimal Donuts", null, this.root);
+        this.world = this.game.add.group(this.root);
+        this.world.y = DonutLayout.hud;
+        this.world.x = DonutLayout.donut_cases_padding;
+        this.donut_group = this.game.add.group(this.world);
+        var y_offset = 0;
         var donut_scale = DonutLayout.donut / this.game.cache.getFrameByName("donuts", "donut_1").width;
-        this.donuts_cases = this.game.add.group(this.root, "donuts_cases");
-        this.donuts_cases.y = this.number.y + DonutLayout.number_garbage;
-        this.donuts_cases.x = DonutLayout.donut_cases_padding;
         var _loop_1 = function (index) {
+            var x = (index % 10 + this_1.game.rnd.realInRange(-0.5, 0.5)) * DonutLayout.block;
+            var y = y_offset + this_1.game.rnd.realInRange(0, DonutLayout.donuts_hands - DonutLayout.block);
+            this_1.donuts[index] = this_1.game.add.spriteBatch(this_1.donut_group, "donut_" + (index + 1));
+            this_1.donuts[index].position.x = x + DonutLayout.block / 2;
+            this_1.donuts[index].position.y = y + DonutLayout.block / 2;
+            this_1.rnd_donut().forEach(function (name, layer_index) {
+                var layer = _this.donuts[index].create(0, 0, "donuts", name);
+                layer.anchor.setTo(0.5, 0.5);
+                layer.scale.setTo(donut_scale, donut_scale);
+            });
+        };
+        var this_1 = this;
+        for (var index = 0; index < 56; index++) {
+            _loop_1(index);
+        }
+        this.hands = this.game.add.group(this.world, "hands");
+        this.hands.y = y_offset;
+        this.hands.alpha = 0.8;
+        var hand_scale = DonutLayout.donuts_hands / this.game.cache.getFrameByName("donuts", "right_hand").width;
+        this.right_hand = this.game.add.sprite(DonutLayout.donuts_hands, 0, "donuts", "right_hand", this.hands);
+        this.right_hand.scale.setTo(hand_scale, hand_scale);
+        this.left_hand = this.game.add.sprite(DonutLayout.donuts_hands / 2, 0, "donuts", "right_hand", this.hands);
+        this.left_hand.anchor.setTo(0.5, 0);
+        this.left_hand.scale.setTo(-hand_scale, hand_scale);
+        y_offset += DonutLayout.donuts_hands;
+        y_offset += DonutLayout.number_garbage;
+        var _loop_2 = function (index) {
             var x = (index % 10) * DonutLayout.block;
-            var y = Math.floor(index / 10) * DonutLayout.block;
-            this_1.cases[index] = this_1.game.add.group(this_1.donuts_cases);
-            this_1.cases[index].x = x;
-            this_1.cases[index].y = y;
-            var graphics = this_1.game.add.graphics(0, 0, this_1.cases[index]);
+            var y = y_offset + Math.floor(index / 10) * DonutLayout.block;
+            this_2.cases[index] = this_2.game.add.group(this_2.world);
+            this_2.cases[index].x = x;
+            this_2.cases[index].y = y;
+            var graphics = this_2.game.add.graphics(0, 0, this_2.cases[index]);
             graphics.lineStyle(3, 0x404040, 1);
             graphics.drawRect(0, 0, DonutLayout.block, DonutLayout.block);
-            //let text = this.game.add.text(x + this.donut_block / 2, y + this.donut_block / 2, String(index + 1), style, this.donut_holders[index])
-            //text.anchor.setTo(0.5, 0.5)
-            var donut_holder = this_1.cases[index].create(DonutLayout.block / 2, DonutLayout.block / 2, "donuts", "donut_black");
+            var donut_holder = this_2.cases[index].create(DonutLayout.block / 2, DonutLayout.block / 2, "donuts", "donut_black");
             donut_holder.anchor.setTo(0.5, 0.5);
             donut_holder.scale.setTo(donut_scale, donut_scale);
             donut_holder.alpha = 1;
@@ -83,66 +108,19 @@ var Game = /** @class */ (function () {
                 _this.caseDonuts();
             });
         };
-        var this_1 = this;
+        var this_2 = this;
         for (var index = 0; index < 100; index++) {
-            _loop_1(index);
+            _loop_2(index);
         }
-    };
-    Game.prototype.initGarbage = function () {
         var garbage_scale = DonutLayout.number_garbage / (this.game.cache.getFrameByName("donuts", "recycle_bin").height + 10);
-        this.garbage = this.game.add.sprite(DonutLayout.block * 10, 0, "donuts", "recycle_bin", this.donuts_cases);
+        this.garbage = this.game.add.sprite(DonutLayout.block * 10, 0, "donuts", "recycle_bin", this.world);
         this.garbage.anchor.setTo(0.5, 0);
         this.garbage.scale.setTo(garbage_scale, garbage_scale);
         this.garbage.alpha = 0;
+        this.world.bringToTop(this.donut_group);
+        this.world.bringToTop(this.hands);
     };
-    Game.prototype.initDonutHands = function () {
-        var _this = this;
-        var donut_scale = DonutLayout.donut / this.game.cache.getFrameByName("donuts", "donut_1").width;
-        this.donuts_hands = this.game.add.group(this.root, "donuts_hands");
-        this.donuts_hands.y = DonutLayout.hud;
-        this.donuts_hands.x = DonutLayout.donut_cases_padding;
-        var _loop_2 = function (index) {
-            var x = (index % 10 + this_2.game.rnd.realInRange(-0.5, 0.5)) * DonutLayout.block;
-            var y = this_2.game.rnd.realInRange(0, DonutLayout.donuts_hands - DonutLayout.block);
-            this_2.donuts[index] = this_2.game.add.spriteBatch(this_2.donuts_hands, "donut_" + (index + 1));
-            this_2.donuts[index].position.x = x + DonutLayout.block / 2;
-            this_2.donuts[index].position.y = y + DonutLayout.block / 2;
-            this_2.rnd_donut().forEach(function (name, layer_index) {
-                var layer = _this.donuts[index].create(0, 0, "donuts", name);
-                layer.anchor.setTo(0.5, 0.5);
-                layer.scale.setTo(donut_scale, donut_scale);
-            });
-        };
-        var this_2 = this;
-        for (var index = 0; index < 10; index++) {
-            _loop_2(index);
-        }
-        this.initHands();
-    };
-    Game.prototype.initHands = function () {
-        this.hands = this.game.add.group(this.donuts_hands, "hands");
-        this.hands.alpha = 0.8;
-        var hand_scale = DonutLayout.donuts_hands / this.game.cache.getFrameByName("donuts", "right_hand").width;
-        this.right_hand = this.game.add.sprite(DonutLayout.donuts_hands, 0, "donuts", "right_hand", this.hands);
-        this.right_hand.scale.setTo(hand_scale, hand_scale);
-        this.left_hand = this.game.add.sprite(DonutLayout.donuts_hands / 2, 0, "donuts", "right_hand", this.hands);
-        this.left_hand.anchor.setTo(0.5, 0);
-        this.left_hand.scale.setTo(-hand_scale, hand_scale);
-    };
-    Game.prototype.initHud = function () {
-        this.hud = this.game.add.group(this.root, "hud");
-        this.hud.x = DonutLayout.donut_cases_padding;
-        this.timer = this.game.add.text(0, 0, "1:30", null, this.hud);
-        this.title = this.game.add.text(DonutLayout.block * 4, 0, "Decimal Donuts", null, this.hud);
-    };
-    Game.prototype.centerRootGroup = function () {
-        var ppux = this.game.width / DonutLayout.width;
-        var ppuy = this.game.height / DonutLayout.height;
-        var ppu = Math.min(ppux, ppuy);
-        this.root = this.game.add.group();
-        this.root.x = ppux > ppuy ? this.game.width / 2 - ppu * DonutLayout.width / 2 : 0;
-        this.root.y = ppuy > ppux ? this.game.height / 2 - ppu * DonutLayout.height / 2 : 0;
-        this.root.scale.setTo(ppu, ppu);
+    Game.prototype.initDonutCases = function () {
     };
     Game.prototype.previewCaseSelected = function (alpha) {
         for (var i = 0; i < this.cases.length; i++) {
@@ -170,14 +148,23 @@ var Game = /** @class */ (function () {
         var cased = 0;
         var hand_positions = [1, 0, 0, 1, 2, 2, 1, 0, 0, 1];
         var moveTen = function () {
+            var y = _this.cases[0].y + Math.floor((cased) / 10) * DonutLayout.block;
+            var time = (y - _this.hands.y) / DonutLayout.hands_speed;
+            console.log("Moving");
             for (var i = 0; i < 10; i++) {
                 _this.donuts[cased + i].x = DonutLayout.block * i + DonutLayout.block / 2;
                 _this.donuts[cased + i].y = DonutLayout.block * hand_positions[i] + DonutLayout.block / 2;
+                _this.donut_group.bringToTop(_this.donuts[cased + i]);
+                var time_to_sub = (DonutLayout.block * hand_positions[i]) / DonutLayout.hands_speed;
+                _this.game.add.tween(_this.donuts[cased + i]).to({ y: y + DonutLayout.block / 2 }, time - time_to_sub, null, true, 0, 0, false);
             }
-            _this.hands.y = _this.donuts_cases.y - _this.donuts_hands.y + _this.cases[0].y + Math.floor((cased) / 10) * DonutLayout.block;
+            var tween = _this.game.add.tween(_this.hands).to({ y: y }, time, null, true, 0, 0, true);
+            tween.start();
             cased += 10;
             if (count - cased >= 10) {
-                moveTen();
+                tween.onComplete.add(function () {
+                    moveTen();
+                });
             }
         };
         moveTen();
