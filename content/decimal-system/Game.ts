@@ -1,44 +1,49 @@
-/// <reference path="../../typescript/phaser.comments.d.ts" />
 
 class DonutLayout {
     static width = 900
-    static height = 1500
+    static height = 1300
     static hud = 100
-
-    static donut = 66
-    static block = DonutLayout.donut + 10
-    static donuts_hands = DonutLayout.block * 5
-    static number_garbage = DonutLayout.block * 3
-    static donut_cases_padding = 50
     
-    static hands_speed = 0.8
+
+
+    static donut = 65
+    static block = DonutLayout.donut + 5
+    
+    static hands_width = DonutLayout.block * 5
+    
+    static number_height = DonutLayout.block * 2
+    static donuts_height = DonutLayout.block * 5
+    
+    static donut_cases_padding = 50
+
+    static hands_speed = 0.4
 }
 
-enum State {
-    WAITING_FOR_CASE,
-    CASE_SELECTED,
-}
 
 class Game {
-
 
     game: Phaser.Game
 
     root: Phaser.Group
+    
+    hud: Phaser.Group
     world: Phaser.Group
-    donut_group: Phaser.Group
+    number: Phaser.Text
+    hands: Phaser.Group
+    garbage: Phaser.Sprite
 
+    
     timer: Phaser.Text
     title: Phaser.Text
     stars: Phaser.Sprite[]
 
     donuts: Phaser.SpriteBatch[] = []
-    hands: Phaser.Group
+    
     right_hand: Phaser.Sprite
     left_hand: Phaser.Sprite
-    right_one_hand: Phaser.Sprite
+    right_hand_one: Phaser.Sprite
 
-    garbage: Phaser.Sprite
+    
 
     cases: Phaser.Group[] = []
 
@@ -47,12 +52,12 @@ class Game {
 
     constructor(width: number, height: number) {
 
+        
         this.game = new Phaser.Game(width, height, Phaser.AUTO, "content", {
             preload: () => this.preload(),
             create: () => this.create(),
             update: () => this.update()
         })
-
 
     }
 
@@ -71,7 +76,13 @@ class Game {
         this.root.y = ppuy > ppux ? this.game.height / 2 - ppu * DonutLayout.height / 2 : 0;
         this.root.scale.setTo(ppu, ppu);
 
-        
+        let graphics = this.game.add.graphics(0, 0, this.root)
+        graphics.lineStyle(10, 0xAA0000, 1)
+        graphics.drawRect(0, 0, DonutLayout.width, DonutLayout.height)
+        // graphics.lineStyle(5, 0xAA0000, 0.7)
+        // graphics.drawRect(0, 0, DonutLayout.width, DonutLayout.hud)
+        // graphics.lineStyle(5, 0x00AA00, 0.7)
+        // graphics.drawRect(0, DonutLayout.hud, DonutLayout.width, DonutLayout.number_height)
 
         this.timer = this.game.add.text(DonutLayout.donut_cases_padding, 0, "1:30", null, this.root);
         this.title = this.game.add.text(DonutLayout.block * 4, 0, "Decimal Donuts", null, this.root);
@@ -80,46 +91,15 @@ class Game {
         this.world.y = DonutLayout.hud
         this.world.x = DonutLayout.donut_cases_padding
 
-        this.donut_group = this.game.add.group(this.world)
 
-        let y_offset = 0
 
         let donut_scale = DonutLayout.donut / this.game.cache.getFrameByName("donuts", "donut_1").width
+
+
         
-        for (let index = 0; index < 56; index++) {
-            let x = (index % 10 + this.game.rnd.realInRange(-0.5, 0.5)) * DonutLayout.block;
-            let y = y_offset + this.game.rnd.realInRange(0, DonutLayout.donuts_hands - DonutLayout.block);
-            this.donuts[index] = this.game.add.spriteBatch(this.donut_group, "donut_" + (index + 1));
-            this.donuts[index].position.x = x + DonutLayout.block / 2;
-            this.donuts[index].position.y = y + DonutLayout.block / 2;
-            this.rnd_donut().forEach((name, layer_index) => {
-                let layer: Phaser.Sprite = this.donuts[index].create(0, 0, "donuts", name);
-                layer.anchor.setTo(0.5, 0.5);
-                layer.scale.setTo(donut_scale, donut_scale);
-            });
-
-        }
-
-
-
-
-        this.hands = this.game.add.group(this.world, "hands");
-        this.hands.y = y_offset
-        this.hands.alpha = 0.8;
-
-        let hand_scale = DonutLayout.donuts_hands / this.game.cache.getFrameByName("donuts", "right_hand").width;
-        this.right_hand = this.game.add.sprite(DonutLayout.donuts_hands, 0, "donuts", "right_hand", this.hands);
-        this.right_hand.scale.setTo(hand_scale, hand_scale);
-        this.left_hand = this.game.add.sprite(DonutLayout.donuts_hands / 2, 0, "donuts", "right_hand", this.hands);
-        this.left_hand.anchor.setTo(0.5, 0);
-        this.left_hand.scale.setTo(-hand_scale, hand_scale);
-
-        y_offset += DonutLayout.donuts_hands
-        y_offset += DonutLayout.number_garbage
-
         for (let index = 0; index < 100; index++) {
             let x = (index % 10) * DonutLayout.block;
-            let y = y_offset + Math.floor(index / 10) * DonutLayout.block;
+            let y = DonutLayout.number_height + DonutLayout.donuts_height + Math.floor(index / 10) * DonutLayout.block;
             this.cases[index] = this.game.add.group(this.world);
             this.cases[index].x = x;
             this.cases[index].y = y;
@@ -147,25 +127,55 @@ class Game {
                 this.selection_made = true
                 console.log("Up on ", donut_holder.data.index)
                 this.previewCaseSelected(0)
-                this.caseDonuts()
+                this.putDonutsInCase()
             })
         }
 
-        let garbage_scale = DonutLayout.number_garbage / (this.game.cache.getFrameByName("donuts", "recycle_bin").height + 10);
+
+
+
+        let total = 39
+        for (let i = 0; i < total; i++) {
+            let index = total - 1 - i  
+            let x = (index % 10 + this.game.rnd.realInRange(-0.5, 0.3)) * DonutLayout.block;
+            let y = DonutLayout.number_height +  this.game.rnd.realInRange(0, DonutLayout.donuts_height - DonutLayout.block);
+            this.donuts[index] = this.game.add.spriteBatch(this.world, "donut_" + (index + 1));
+            this.donuts[index].position.x = x + DonutLayout.block / 2;
+            this.donuts[index].position.y = y + DonutLayout.block / 2;
+            this.rnd_donut().forEach((name, layer_index) => {
+                let layer: Phaser.Sprite = this.donuts[index].create(0, 0, "donuts", name);
+                layer.anchor.setTo(0.5, 0.5);
+                layer.scale.setTo(donut_scale, donut_scale);
+            });
+
+        }
+
+        this.hands = this.game.add.group(this.world, "hands");
+        this.hands.y = DonutLayout.number_height
+        this.hands.alpha = 0.6;
+
+        let hand_scale = DonutLayout.hands_width / this.game.cache.getFrameByName("donuts", "right_hand").width;
+        let hand_height_scale = DonutLayout.donuts_height / this.game.cache.getFrameByName("donuts", "right_hand").height;
+        this.right_hand = this.game.add.sprite(DonutLayout.hands_width, 0, "donuts", "right_hand", this.hands);
+        this.right_hand.scale.setTo(hand_scale, hand_height_scale);
+        this.left_hand = this.game.add.sprite(DonutLayout.hands_width / 2, 0, "donuts", "right_hand", this.hands);
+        this.left_hand.anchor.setTo(0.5, 0);
+        this.left_hand.scale.setTo(-hand_scale, hand_height_scale);
+
+        this.right_hand_one = this.game.add.sprite(DonutLayout.hands_width, 0, "donuts", "right_hand_one", this.hands);
+        this.right_hand_one.scale.setTo(hand_scale, hand_height_scale);
+        this.right_hand_one.renderable = false
+        this.right_hand_one.anchor.setTo(0.2, 0)
+
+        let garbage_scale = DonutLayout.hands_width / (this.game.cache.getFrameByName("donuts", "recycle_bin").height + 10);
         this.garbage = this.game.add.sprite(DonutLayout.block * 10, 0, "donuts", "recycle_bin", this.world);
         this.garbage.anchor.setTo(0.5, 0);
         this.garbage.scale.setTo(garbage_scale, garbage_scale);
         this.garbage.alpha = 0;
 
-        this.world.bringToTop(this.donut_group)
-        this.world.bringToTop(this.hands)
+        
+        
     }
-
-
-
-    private initDonutCases() {
-    }
-
 
 
 
@@ -194,41 +204,89 @@ class Game {
         ]
     }
 
-    private caseDonuts() {
-        let count = this.donuts.length
-        let cased = 0
-        let hand_positions = [1, 0, 0, 1, 2, 2, 1, 0, 0, 1]
-        let moveTen = () => {
-            let y = this.cases[0].y + Math.floor((cased) / 10) * DonutLayout.block
-            let time = (y - this.hands.y) /  DonutLayout.hands_speed
-            console.log("Moving")
-            for (let i = 0; i < 10; i++) {
-                this.donuts[cased + i].x = DonutLayout.block * i + DonutLayout.block / 2
-                this.donuts[cased + i].y = DonutLayout.block * hand_positions[i] + DonutLayout.block / 2
-                this.donut_group.bringToTop(this.donuts[cased + i])
-                let time_to_sub = (DonutLayout.block * hand_positions[i]) / DonutLayout.hands_speed     
-                this.game.add.tween(this.donuts[cased + i]).to({y: y + DonutLayout.block / 2 }, time - time_to_sub, null, true, 0, 0, false)    
-            }
-            
-            let tween = this.game.add.tween(this.hands).to({y: y }, time, null, true, 0, 0, true)
-            tween.start()
-            cased += 10
-            if (count - cased >= 10) {
-                tween.onComplete.add(() => {
-                    moveTen()
+    private putDonutsInCase() {
+        let total_donuts = this.donuts.length
+        let donuts_cased = 0
+        let caseTen = () => {
+            if (total_donuts - donuts_cased >= 10) {
+                this.animateCaseTen(donuts_cased).then(() => {
+                    donuts_cased += 10
+                    caseTen()
                 })
-                
+            } else {
+                this.switchToRightOneHand()
+                caseOne()
             }
-
         }
-
-        moveTen()
+        let caseOne = () => {
+            if (total_donuts - donuts_cased > 0) {
+                this.animateCaseOne(donuts_cased).then(() => {
+                    donuts_cased++
+                    caseOne()
+                })
+            } else {
+                this.verifyCases()
+            }
+        }
+        caseTen()
     }
 
+    private verifyCases() {
+
+    }
+
+    private animateCaseTen(from: number): Promise<void> {
+
+        return new Promise(
+            (resolve) => {
+                let hand_positions = [1, 0, 0, 1, 2, 2, 1, 0, 0, 1]
+                let y = this.cases[0].y + Math.floor(from / 10) * DonutLayout.block
+                let time = (y - this.hands.y) / DonutLayout.hands_speed
+                for (let i = 0; i < 10; i++) {
+                    this.world.bringToTop(this.donuts[from + i]) 
+                    this.donuts[from + i].x = DonutLayout.block * i + DonutLayout.block / 2
+                    this.donuts[from + i].y = DonutLayout.number_height +  DonutLayout.block * hand_positions[i] + DonutLayout.block / 2
+                    let time_to_sub = (DonutLayout.block * hand_positions[i]) / DonutLayout.hands_speed
+                    this.game.add.tween(this.donuts[from + i]).to({ y: y + DonutLayout.block / 2 }, time - time_to_sub, null, true, 0, 0, false)
+                }
+                this.world.bringToTop(this.hands) 
+                let tween = this.game.add.tween(this.hands).to({ y: y }, time, null, true, 0, 0, false)
+                   
+                tween.onComplete.add(() => {
+                    this.hands.y = DonutLayout.number_height
+                    resolve()
+                })
+            })
+    }
+
+    private animateCaseOne(from: number): Promise<void> {
+        return new Promise(
+            (resolve) => {
+                this.world.bringToTop(this.donuts[from]) 
+                this.world.bringToTop(this.hands) 
+                this.donuts[from].x = DonutLayout.block * (from % 10) + DonutLayout.block / 2
+                this.donuts[from].y = DonutLayout.number_height + DonutLayout.block / 2
+                let y = this.cases[0].y + Math.floor(from / 10) * DonutLayout.block
+                let time = (y - this.hands.y) / (DonutLayout.hands_speed * 1.5)
+                let tween = this.game.add.tween(this.donuts[from]).to({ y: y + DonutLayout.block / 2 }, time, null, true, 0, 0, false)
+                tween.onComplete.add(() => resolve())
+
+                this.right_hand_one.x = this.donuts[from].x
+                this.hands.y = this.donuts[from].y
+                this.game.add.tween(this.hands).to({ y: y }, time, null, true, 0, 0, true)
+            }
+        )
+    }
+
+    private switchToRightOneHand() {
+        this.right_hand.renderable = false
+        this.left_hand.renderable = false
+        this.right_hand_one.renderable = true
+    }
 }
 
 window.onload = () => {
 
-    var game = new Game(window.innerWidth, window.innerHeight)
+    var game = new Game(window.innerWidth, window.innerHeight - 300)
 }
 
