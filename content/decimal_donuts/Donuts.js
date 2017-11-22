@@ -1,142 +1,353 @@
 /// <reference path="../../typescript/phaser.comments.d.ts" />
+class Config {
+}
+Config.DONUTS_SPAN_HEIGHT = 350;
+Config.EDGE_PADDING = 10;
+Config.DONUT_SIZE = 85;
+Config.CASE_PADDING = 13;
+Config.DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING;
+Config.DONUT_MIN_SPEED = 50;
+Config.DONUT_MAX_SPEED = 130;
+Config.HANDS_SPEED = 0.9;
+Config.CASES_OUT_RANGE = Config.DONUT_CASE * 20;
+Config.CASES_IN_OUT_TIME = 800;
+Config.CASES_DROP_TIME = 800;
+Config.DONUTS_SPAN_TIME = 100;
+Config.DONUTS_SPAN_GAP = 20;
+Config.ROUNDS_PER_PLAY = 10;
+Config.SCORE_PER_ROUND = 10;
 class DecimalDonuts {
-    constructor(game) {
-        this.game = game;
-        this.donutCases = new DonutCases(this.game);
-        this.donutTray = new DonutFactory(this.game);
+    constructor(core) {
+        this.actors = [];
+        this.donutPackaging = new DonutPackaging();
+        this.donutFactory = new DonutFactory();
+        this.workerHands = new WorkerHands(this.donutPackaging, this.donutFactory);
+        this.core = core;
+        this.actors.push(this.donutPackaging);
+        this.actors.push(this.donutFactory);
+        this.actors.push(this.workerHands);
+        this.donutPackaging.roundOver.add(this.roundOver, this);
     }
     preload() {
+        this.game = window["game"];
         this.game.load.atlasJSONHash("donuts", "assets/donuts.png", "assets/donuts.json");
-        this.game.load.bitmapFont("numbers_40", "assets/fonts/KaoriGel_40.png", "assets/fonts/KaoriGel_40.fnt");
-        this.game.load.bitmapFont("numbers_240", "assets/fonts/KaoriGel_240.png", "assets/fonts/KaoriGel_240.fnt");
+        this.actors.map(actor => actor.preload(this.game));
     }
     create(gameGroup) {
         this.gameGroup = gameGroup;
-        this.game.physics.startSystem(Phaser.Physics.ARCADE);
-        this.donutCases.create(gameGroup);
-        this.donutCases.caseSelected.add(this.caseSelected, this);
-        this.donutTray.create(gameGroup, this.donutCases.cases[0].position);
-        this.donutTray.donutsCased.add(this.donutsCased, this);
-        this.restart(40);
+        this.gameGroup.x += Config.EDGE_PADDING;
+        this.gameGroup.y += Config.EDGE_PADDING;
+        this.actors.map(actor => actor.create(gameGroup));
+        this.restart();
     }
     update() {
-        this.game.physics.arcade.collide(this.gameGroup, this.donutTray.borderGroup);
+        this.actors.map(actor => actor.update());
     }
     render() {
-        if (this.game.config.enableDebug) {
-            this.gameGroup.children.forEach(el => {
-                if (el instanceof Phaser.Sprite) {
-                    this.game.debug.body(el);
+    }
+    levelOver() {
+        this.restart();
+    }
+    restart() {
+        this.actors.map(actor => actor.restart());
+    }
+    roundOver(score) {
+        this.core.incrScore(score);
+        this.restart();
+    }
+}
+class Actor {
+    preload(game) {
+        this.game = game;
+    }
+    create(group) { }
+    update() { }
+    render() { }
+    restart() { }
+    reload() { }
+}
+class DonutPackaging extends Actor {
+    constructor() {
+        super(...arguments);
+        this.cases = [];
+        this.startPacking = new Phaser.Signal();
+        this.roundOver = new Phaser.Signal();
+        this.casesCount = 100;
+    }
+    checkPackaging() {
+        if (this.packedCount == this.selectedCase + 1) {
+            this.endRound(Config.SCORE_PER_ROUND);
+        }
+        else {
+            if (this.packedCount < this.selectedCase + 1) {
+                for (let i = this.packedCount; i <= this.selectedCase; i++) {
+                    this.wasted.add(this.cases[i], true);
                 }
-                if (el instanceof Phaser.Group) {
-                    el.children.forEach(ch => {
-                        if (ch instanceof Phaser.Sprite) {
-                            this.game.debug.body(ch);
-                        }
-                    });
-                }
+            }
+            this.game.add.tween(this.wasted).to({ y: Config.CASES_OUT_RANGE }, Config.CASES_DROP_TIME, Phaser.Easing.Exponential.In, true).onComplete.add(() => {
+                this.endRound(0);
             });
         }
     }
-    caseSelected(noOfCases) {
-        this.donutTray.moveToCases(this.donutCases.casesGroup);
+    endRound(score) {
+        this.game.add.tween(this.casesInUse).to({ x: Config.CASES_OUT_RANGE }, Config.CASES_IN_OUT_TIME, Phaser.Easing.Exponential.In, true)
+            .onComplete.add(() => {
+            this.roundOver.dispatch(score);
+        });
     }
-    donutsCased(casingDone, casedCount) {
-        this.donutCases.donutsCased(casingDone, casedCount);
-        if (casingDone) {
-            window.setTimeout(() => {
-                let count = this.game.rnd.integerInRange(1, 99);
-                this.restart(count);
-            }, 3000);
+    packTen(donutsToPack) {
+        donutsToPack.forEach((donut, index) => {
+            this.placeDonut(donut, index);
+        });
+        this.packedCount += 10;
+    }
+    packOne(donut) {
+        this.placeDonut(donut, 0);
+        this.packedCount += 1;
+    }
+    placeDonut(donut, index) {
+        if (this.packedCount + index > this.selectedCase) {
+            this.wasted.add(donut);
+            donut.x = this.cases[this.packedCount + index].x;
+            donut.y = this.cases[this.packedCount + index].y;
+        }
+        else {
+            this.cases[this.packedCount + index].add(donut);
+            donut.x = 0;
+            donut.y = 0;
         }
     }
-    restart(count) {
-        this.donutCases.restart(count);
-        this.donutTray.restart(count);
+    create(group) {
+        this.game = window["game"];
+        this.casesInUse = this.game.add.group(group);
+        this.casesPool = this.game.add.group(group);
+        this.wasted = this.game.add.group(group);
+        this.casesPool.visible = false;
+        let donutScale = (Config.DONUT_SIZE * 1) / this.game.cache.getFrameByName("donuts", "donut_1").width;
+        let hoverFunc = (blackDonut) => {
+            this.hover(blackDonut.data.caseIndex);
+        };
+        let clickFunc = (blackDonut, pointer, isOver) => {
+            if (isOver) {
+                this.select(blackDonut.data.caseIndex);
+            }
+            else {
+                this.select(this.previewCase);
+            }
+        };
+        for (let i = 0; i < this.casesCount; i++) {
+            this.cases[i] = this.game.add.group(this.casesPool);
+            let isBlack = (Math.floor(i / 10) % 2) == (i % 2);
+            let blackDonut = this.cases[i].create(0, 0, "donuts", "donut_" + (isBlack ? "black_case" : "white_case"));
+            blackDonut.data.caseIndex = i;
+            blackDonut.anchor.setTo(0.5, 0.5);
+            blackDonut.scale.setTo(donutScale, donutScale);
+            blackDonut.inputEnabled = true;
+            blackDonut.events.onInputOver.add(hoverFunc);
+            blackDonut.events.onInputUp.add(clickFunc);
+        }
+    }
+    hover(caseIndex) {
+        if (this.selectedCase == null) {
+            this.redraw(caseIndex, 0.3);
+            this.previewCase = caseIndex;
+        }
+    }
+    select(caseIndex) {
+        if (this.selectedCase == null) {
+            this.selectedCase = caseIndex;
+            for (let i = caseIndex + 1; i < this.cases.length; i++) {
+                this.casesPool.add(this.cases[i]);
+            }
+            this.startPacking.dispatch();
+        }
+    }
+    redraw(caseIndex, alphaAfter) {
+        for (let i = 0; i < this.cases.length; i++) {
+            this.cases[i].alpha = i <= caseIndex ? 1 : alphaAfter;
+        }
+    }
+    restart() {
+        this.wasted.y = 0;
+        this.packedCount = 0;
+        this.casesInUse.x = -Config.CASES_OUT_RANGE;
+        this.previewCase = null;
+        this.selectedCase = null;
+        for (let i = 0; i < this.cases.length; i++) {
+            this.casesInUse.add(this.cases[i], true);
+            this.cases[i].x = (i % 10) * Config.DONUT_CASE + Config.DONUT_CASE / 2;
+            this.cases[i].y = Config.DONUTS_SPAN_HEIGHT + Math.floor(i / 10) * Config.DONUT_CASE + Config.DONUT_CASE / 2;
+        }
+        this.redraw(100, 1);
+        this.game.add.tween(this.casesInUse).to({ x: 0 }, Config.CASES_IN_OUT_TIME, Phaser.Easing.Exponential.Out, true);
     }
 }
-DecimalDonuts.DONUTS_SPAN_HEIGHT = 350;
-DecimalDonuts.EDGE_PADDING = 10;
-DecimalDonuts.DONUT_SIZE = 80;
-DecimalDonuts.CASE_PADDING = 12;
-DecimalDonuts.DONUT_CASE = DecimalDonuts.DONUT_SIZE + DecimalDonuts.CASE_PADDING;
-DecimalDonuts.DONUT_MIN_SPEED = 50;
-DecimalDonuts.DONUT_MAX_SPEED = 130;
-DecimalDonuts.HANDS_SPEED = 0.6;
-class DonutFactory {
-    constructor(game) {
-        this.donuts = [];
-        this.game = game;
-        this.donutsCased = new Phaser.Signal();
+class WorkerHands extends Actor {
+    constructor(donutPackaging, donutFactory) {
+        super();
+        this.donutPackaging = donutPackaging;
+        this.donutFactory = donutFactory;
+        this.donutPackaging.startPacking.add(this.startMoving, this);
     }
-    create(gameGroup, firstCasePosition) {
-        this.gameGroup = gameGroup;
-        this.firstCasePosition = firstCasePosition;
-        this.borderGroup = this.game.add.group(this.gameGroup);
-        this.donutsGroup = this.game.add.group(this.gameGroup);
-        let createBorder = (x, y, width, height) => {
-            let border = this.game.add.sprite(x, y, null, null, this.borderGroup);
-            this.game.physics.enable(border, Phaser.Physics.ARCADE);
-            let body = border.body;
-            body.immovable = true;
-            border.body.setSize(window["ppu"] * width, window["ppu"] * height);
-        };
-        let thickness = 1;
-        createBorder(DecimalDonuts.EDGE_PADDING, 0, DecimalDonuts.DONUT_CASE * 10, thickness);
-        createBorder(DecimalDonuts.EDGE_PADDING, 0, thickness, DecimalDonuts.DONUTS_SPAN_HEIGHT);
-        createBorder(DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 10, 0, thickness, DecimalDonuts.DONUTS_SPAN_HEIGHT);
-        createBorder(DecimalDonuts.EDGE_PADDING, DecimalDonuts.DONUTS_SPAN_HEIGHT, DecimalDonuts.DONUT_CASE * 10, thickness);
-        let graphics = this.game.add.graphics(0, 0, this.gameGroup);
-        graphics.lineStyle(5, 0x000000, 1);
-        graphics.drawRect(DecimalDonuts.EDGE_PADDING, 0, DecimalDonuts.DONUT_CASE * 10, DecimalDonuts.DONUTS_SPAN_HEIGHT);
-        this.donutsNumber = this.game.add.bitmapText(DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 5, DecimalDonuts.DONUTS_SPAN_HEIGHT / 2, "numbers_240", "", 240, this.gameGroup);
-        this.donutsNumber.anchor.setTo(0.5, 0.3);
-        this.hands = this.game.add.group(this.gameGroup);
-        this.hands.x = DecimalDonuts.EDGE_PADDING;
-        this.hands.y = DecimalDonuts.DONUT_CASE;
-        let handScale = DecimalDonuts.DONUT_CASE * 5 / this.game.cache.getFrameByName("donuts", "right_hand").width;
-        let handAlpha = 0.8;
-        let handYPos = DecimalDonuts.DONUT_CASE * 1.5;
+    create(group) {
+        this.hands = this.game.add.group(group);
+        this.onesHand = this.game.add.group(group);
+        this.hands = this.game.add.group(group);
+        let handScale = Config.DONUT_CASE * 5 / this.game.cache.getFrameByName("donuts", "right_hand").width;
+        let handAlpha = 1;
+        let handYPos = Config.DONUT_CASE * 1.5;
         let leftHand = this.game.add.sprite(0, -handYPos, "donuts", "left_hand", this.hands);
         leftHand.scale.setTo(handScale, handScale);
         leftHand.alpha = handAlpha;
-        let rightHand = this.game.add.sprite(DecimalDonuts.DONUT_CASE * 5, -handYPos, "donuts", "right_hand", this.hands);
+        let rightHand = this.game.add.sprite(Config.DONUT_CASE * 5, -handYPos, "donuts", "right_hand", this.hands);
         rightHand.scale.setTo(handScale, handScale);
         rightHand.alpha = handAlpha;
-        this.oneHand = this.game.add.group(this.gameGroup);
-        let indexFiger = this.game.add.sprite(0, 0, "donuts", "right_hand_one", this.oneHand);
+        this.onesHand = this.game.add.group(group);
+        let indexFiger = this.game.add.sprite(0, 0, "donuts", "right_hand_one", this.onesHand);
         indexFiger.anchor.setTo(0.3, 0.1);
         indexFiger.scale.setTo(handScale, handScale);
         indexFiger.alpha = handAlpha;
-    }
-    restart(donutCount) {
         this.hands.visible = false;
-        this.oneHand.visible = false;
-        this.donutCount = donutCount;
-        this.casedDonutCount = 0;
-        this.donutsNumber.text = donutCount.toString();
+        this.onesHand.visible = false;
+    }
+    startMoving() {
+        this.hands.visible = true;
+        this.moveTen();
+    }
+    moveTen() {
+        let donutsToPack = this.getNextDonutsBatch();
+        if (donutsToPack.length == 10) {
+            this.hands.y = 0;
+            donutsToPack.forEach((donut, index) => {
+                this.donutFactory.prepare(donut);
+                this.hands.add(donut, true, 0);
+                donut.x = Config.DONUT_CASE * (index + 0.5);
+                donut.y = 0;
+            });
+            let y = this.getNextCasePos().y;
+            let time = y / Config.HANDS_SPEED;
+            this.game.add.tween(this.hands).to({ y: y }, time, null, true).onComplete.add(() => {
+                this.donutPackaging.packTen(donutsToPack);
+                this.moveTen();
+            });
+        }
+        else {
+            this.hands.visible = false;
+            this.onesHand.visible = true;
+            this.moveOne();
+        }
+    }
+    moveOne() {
+        let donutsToPack = this.getNextDonutsBatch();
+        if (donutsToPack.length == 0) {
+            this.onesHand.visible = false;
+            this.donutPackaging.checkPackaging();
+        }
+        else {
+            let donut = donutsToPack[0];
+            this.donutFactory.prepare(donut);
+            this.onesHand.x = donut.x;
+            this.onesHand.y = donut.y;
+            this.onesHand.add(donut, true, 0);
+            donut.x = 0;
+            donut.y = 0;
+            let x = this.getNextCasePos().x;
+            let y = this.getNextCasePos().y;
+            let time = (y - this.onesHand.y) / Config.HANDS_SPEED;
+            this.game.add.tween(this.onesHand).to({ x: x, y: y }, time, null, true).onComplete.add(() => {
+                this.donutPackaging.packOne(donut);
+                this.moveOne();
+            });
+        }
+    }
+    getNextDonutsBatch() {
+        if (this.donutFactory.donutsInUse.length >= 10) {
+            return this.donutFactory.donutsInUse.children.slice(-10);
+        }
+        else {
+            return this.donutFactory.donutsInUse.children.slice(-1);
+        }
+    }
+    getNextCasePos() {
+        return this.donutPackaging.cases[this.donutPackaging.packedCount].position;
+    }
+}
+class DonutFactory extends Actor {
+    constructor() {
+        super(...arguments);
+        this.donuts = [];
+    }
+    addBorder(x, y, width, height) {
+        let border = this.game.add.sprite(x, y, null, null, this.donutBorder);
+        this.game.physics.enable(border, Phaser.Physics.ARCADE);
+        let body = border.body;
+        body.immovable = true;
+        border.body.setSize(window["ppu"] * width, window["ppu"] * height);
+    }
+    createBorders() {
+        let thickness = 1;
+        this.addBorder(0, 0, Config.DONUT_CASE * 10, thickness);
+        this.addBorder(0, 0, thickness, Config.DONUTS_SPAN_HEIGHT);
+        this.addBorder(Config.DONUT_CASE * 10, 0, thickness, Config.DONUTS_SPAN_HEIGHT);
+        this.addBorder(0, Config.DONUTS_SPAN_HEIGHT, Config.DONUT_CASE * 10, thickness);
+        let graphics = this.game.add.graphics(0, 0, this.donutBorder);
+        graphics.lineStyle(5, 0x000000, 1);
+        graphics.drawRect(0, 0, Config.DONUT_CASE * 10, Config.DONUTS_SPAN_HEIGHT);
+    }
+    prepare(donut) {
+        donut.body.velocity.setTo(0, 0);
+        donut.body.angularVelocity = 0;
+    }
+    preload(game) {
+        super.preload(game);
+        this.game.load.bitmapFont("numbers_240", "assets/fonts/KaoriGel_240.png", "assets/fonts/KaoriGel_240.fnt");
+    }
+    create(group) {
+        this.donutBorder = this.game.add.group(group);
+        this.donutsInUse = this.game.add.group(group);
+        this.donutsPool = this.game.add.group(group);
+        this.donutsPool.visible = false;
+        this.donutsNumber = this.game.add.bitmapText(Config.DONUT_CASE * 5, Config.DONUTS_SPAN_HEIGHT / 2, "numbers_240", "", 240, group);
+        this.donutsNumber.anchor.setTo(0.5, 0.3);
+        this.createBorders();
         let donutTextureSize = this.game.cache.getFrameByName("donuts", "donut_1").width;
-        let donutScale = DecimalDonuts.DONUT_SIZE / donutTextureSize;
-        this.donuts.forEach(donut => {
-            donut.kill();
-        });
-        for (let i = 0; i < donutCount; i++) {
-            this.donuts[i] = this.generateDonut(this.donutsGroup);
+        let donutScale = Config.DONUT_SIZE / donutTextureSize;
+        let bounce = new Phaser.Point(1, 1);
+        let bodySize = new Phaser.Point(window["ppu"] * donutTextureSize, (1 - window["ppu"]) * donutTextureSize / 2);
+        for (let i = 0; i < 100; i++) {
+            this.donuts[i] = this.generateDonut(this.donutsPool);
             this.donuts[i].scale.setTo(donutScale, donutScale);
-            this.donuts[i].x = DecimalDonuts.EDGE_PADDING + this.game.rnd.realInRange(DecimalDonuts.DONUT_CASE / 2, DecimalDonuts.DONUT_CASE * 9.5);
-            this.donuts[i].y = this.game.rnd.realInRange(DecimalDonuts.DONUT_CASE / 2, DecimalDonuts.DONUTS_SPAN_HEIGHT - DecimalDonuts.DONUT_CASE / 2);
             this.game.physics.enable(this.donuts[i], Phaser.Physics.ARCADE);
             let body = this.donuts[i].body;
-            body.bounce = new Phaser.Point(1, 1);
-            let angle = Phaser.Math.degToRad(this.game.rnd.angle());
-            let speed = this.game.rnd.realInRange(DecimalDonuts.DONUT_MIN_SPEED, DecimalDonuts.DONUT_MAX_SPEED);
-            body.angularVelocity = 100;
-            body.velocity.setTo(speed * Math.cos(angle), speed * Math.sin(angle));
-            body.setSize(window["ppu"] * donutTextureSize, window["ppu"] * donutTextureSize, (1 - window["ppu"]) * donutTextureSize / 2, (1 - window["ppu"]) * donutTextureSize / 2);
+            body.bounce = bounce;
+            body.setSize(bodySize.x, bodySize.x, bodySize.y, bodySize.y);
         }
-        this.gameGroup.bringToTop(this.hands);
-        this.gameGroup.bringToTop(this.oneHand);
-        this.gameGroup.bringToTop(this.donutsNumber);
+    }
+    restart() {
+        let donutCount = this.game.rnd.integerInRange(1, 99);
+        this.donutCount = donutCount;
+        this.donutsNumber.text = "";
+        this.donuts.forEach(donut => {
+            this.donutsPool.add(donut);
+        });
+        let tween;
+        for (let i = 0; i < donutCount; i++) {
+            let donut = this.donutsPool.getRandom();
+            this.donutsInUse.add(donut, true);
+            donut.x = this.game.rnd.realInRange(Config.DONUT_CASE / 2, Config.DONUT_CASE * 9.5);
+            donut.y = this.game.rnd.realInRange(Config.DONUT_CASE / 2, Config.DONUTS_SPAN_HEIGHT - Config.DONUT_CASE / 2);
+            let body = donut.body;
+            body.angularVelocity = 100;
+            let angle = Phaser.Math.degToRad(this.game.rnd.angle());
+            let speed = this.game.rnd.realInRange(Config.DONUT_MIN_SPEED, Config.DONUT_MAX_SPEED);
+            body.velocity.setTo(speed * Math.cos(angle), speed * Math.sin(angle));
+            donut.alpha = 0;
+            tween = this.game.add.tween(donut).to({ alpha: 1 }, Config.DONUTS_SPAN_TIME, Phaser.Easing.Exponential.Out, true, Config.DONUTS_SPAN_GAP * i);
+        }
+        this.donutsNumber.text = donutCount.toString();
+    }
+    update() {
+        this.game.physics.arcade.collide(this.donutsInUse, this.donutBorder);
     }
     generateDonut(group) {
         let stringToSprite = (imageName) => {
@@ -154,197 +365,10 @@ class DonutFactory {
         baseDonut.addChild(stringToSprite(this.game.rnd.pick(sprinkles)));
         return baseDonut;
     }
-    moveToCases(casesGroup) {
-        this.casesGroup = casesGroup;
-        this.hands.visible = true;
-        this.moveTenToCases();
-    }
-    moveOneToCase() {
-        if (this.donutCount > this.casedDonutCount) {
-            let donutToMove = this.donuts[this.casedDonutCount];
-            donutToMove.physicsEnabled = false;
-            donutToMove.body.angularVelocity = 0;
-            donutToMove.body.velocity.set(0, 0);
-            this.oneHand.position.set(donutToMove.position.x, donutToMove.position.y);
-            this.oneHand.addChildAt(donutToMove, 0);
-            donutToMove.position.set(0, 0);
-            let x = DecimalDonuts.DONUT_CASE * (this.casedDonutCount % 10) + DecimalDonuts.DONUT_CASE / 2;
-            let y = this.firstCasePosition.y + DecimalDonuts.DONUT_CASE / 2 + Math.floor(this.casedDonutCount / 10) * DecimalDonuts.DONUT_CASE;
-            let time = this.oneHand.position.distance(new Phaser.Point(x, y)) / (DecimalDonuts.HANDS_SPEED * 1.42);
-            this.game.add.tween(this.oneHand).to({ x: x, y: y }, time, null, true, 0, 0, false).onComplete.add(() => {
-                this.casedDonutCount++;
-                this.donutsCased.dispatch(false, this.casedDonutCount);
-                this.casesGroup.addChild(donutToMove);
-                donutToMove.x = x + DecimalDonuts.EDGE_PADDING;
-                donutToMove.y = y;
-                this.moveOneToCase();
-            });
-        }
-        else {
-            this.oneHand.visible = false;
-            this.donutsCased.dispatch(true, this.casedDonutCount);
-        }
-    }
-    moveTenToCases() {
-        if (this.donutCount - this.casedDonutCount >= 10) {
-            let donutsToMove = this.donuts.slice(this.casedDonutCount, this.casedDonutCount + 10);
-            donutsToMove.forEach((donut, index) => {
-                donut.physicsEnabled = false;
-                donut.body.angularVelocity = 0;
-                donut.body.velocity.set(0, 0);
-                this.hands.addChildAt(donut, 0);
-                donut.x = DecimalDonuts.DONUT_CASE * index + DecimalDonuts.DONUT_CASE / 2;
-                donut.y = 0;
-            });
-            this.hands.y = DecimalDonuts.DONUT_CASE;
-            let y = this.firstCasePosition.y + DecimalDonuts.DONUT_CASE / 2 + Math.floor(this.casedDonutCount / 10) * DecimalDonuts.DONUT_CASE;
-            let time = (y - this.hands.y) / DecimalDonuts.HANDS_SPEED;
-            this.game.add.tween(this.hands).to({ y: y }, time, null, true, 0, 0, false).onComplete.add(() => {
-                this.casedDonutCount += 10;
-                this.donutsCased.dispatch(false, this.casedDonutCount);
-                donutsToMove.forEach((donut, index) => {
-                    this.casesGroup.addChild(donut);
-                    donut.x += DecimalDonuts.EDGE_PADDING;
-                    donut.y = y;
-                });
-                this.moveTenToCases();
-            });
-        }
-        else {
-            this.hands.visible = false;
-            this.oneHand.visible = true;
-            this.moveOneToCase();
-        }
-    }
-}
-class DonutCases {
-    constructor(game) {
-        this.cases = [];
-        this.tens = [];
-        this.ones = [];
-        this.casesCount = 100;
-        this.game = game;
-    }
-    create(gameGroup) {
-        this.gameGroup = gameGroup;
-        let donutScale = (DecimalDonuts.DONUT_SIZE * 1) / this.game.cache.getFrameByName("donuts", "donut_1").width;
-        let hoverFunc = (blackDonut) => {
-            this.hover(blackDonut.data.caseIndex);
-        };
-        let clickFunc = (blackDonut, pointer, isOver) => {
-            if (isOver) {
-                this.select(blackDonut.data.caseIndex);
-            }
-            else {
-                this.select(this.previewCase);
-            }
-        };
-        this.casesGroup = this.game.add.group(gameGroup);
-        for (let i = 0; i < this.casesCount; i++) {
-            this.cases[i] = this.game.add.group(this.casesGroup);
-            let isBlack = (Math.floor(i / 10) % 2) == (i % 2);
-            let blackDonut = this.cases[i].create(DecimalDonuts.DONUT_CASE / 2, DecimalDonuts.DONUT_CASE / 2, "donuts", "donut_" + (isBlack ? "black_case" : "white_case"));
-            blackDonut.data.caseIndex = i;
-            blackDonut.alpha = 1;
-            blackDonut.anchor.setTo(0.5, 0.5);
-            blackDonut.scale.setTo(donutScale, donutScale);
-            blackDonut.inputEnabled = true;
-            blackDonut.events.onInputOver.add(hoverFunc);
-            blackDonut.events.onInputUp.add(clickFunc);
-        }
-        this.caseSelected = new Phaser.Signal();
-        let guideFontSize = 30;
-        for (let i = 0; i < 9; i++) {
-            let x = DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 10.5;
-            let y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (i + 0.5);
-            this.tens[i] = this.game.add.bitmapText(x, y, "numbers_40", String((i + 1) * 10), guideFontSize, gameGroup);
-            this.tens[i].anchor.setTo(0.5, 0.3);
-            let fontSize = this.tens[i].fontSize;
-            this.game.add.tween(this.tens[i]).to({ fontSize: fontSize * 1.5 }, 1000, null, true, 0, -1, true);
-        }
-        this.onesGroup = this.game.add.group(gameGroup);
-        this.onesGroup.y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 10.5;
-        for (let i = 0; i < 9; i++) {
-            let x = DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (i + 0.5);
-            let y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (10.5);
-            this.ones[i] = this.game.add.bitmapText(x, 0, "numbers_40", "9" + String((i + 1)), guideFontSize, this.onesGroup);
-            this.ones[i].anchor.setTo(0.5, 0.7);
-            let fontSize = this.ones[i].fontSize;
-            this.game.add.tween(this.ones[i]).to({ fontSize: fontSize * 1.5 }, 1000, null, true, 0, -1, true);
-        }
-    }
-    hover(caseIndex) {
-        if (this.selectedCase == null) {
-            this.redraw(caseIndex, 0.3);
-            this.previewCase = caseIndex;
-        }
-    }
-    select(caseIndex) {
-        if (this.selectedCase == null) {
-            this.redraw(caseIndex, 0);
-            this.selectedCase = caseIndex;
-            this.caseSelected.dispatch(caseIndex + 1);
-        }
-    }
-    redraw(caseIndex, alphaAfter) {
-        for (let i = 0; i < this.cases.length; i++) {
-            this.cases[i].alpha = i <= caseIndex ? 1 : alphaAfter;
-        }
-    }
-    restart(count) {
-        this.casesGroup.renderable = false;
-        this.casesGroup.x = -DecimalDonuts.CASE_PADDING * 20;
-        this.previewCase = null;
-        this.selectedCase = null;
-        for (let i = 0; i < this.cases.length; i++) {
-            this.cases[i].parent = this.casesGroup;
-            this.cases[i].x = DecimalDonuts.EDGE_PADDING + (i % 10) * DecimalDonuts.DONUT_CASE;
-            this.cases[i].y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + Math.floor(i / 10) * DecimalDonuts.DONUT_CASE;
-        }
-        this.redraw(100, 1);
-        let tensPlace = Math.floor(count / 10);
-        this.onesGroup.y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (tensPlace + 1.5);
-        for (let i = 0; i < 9; i++) {
-            this.ones[i].text = String((tensPlace * 10 + i + 1));
-            this.ones[i].visible = false;
-            this.tens[i].visible = false;
-        }
-        this.game.add.tween(this.casesGroup).to({ x: 0 }, 800, Phaser.Easing.Bounce.Out, true);
-    }
-    donutsCased(casingDone, casedCount) {
-        if (!casingDone) {
-            let tensPlace = Math.floor(casedCount / 10);
-            let onesPlace = casedCount % 10;
-            if (onesPlace == 0) {
-                this.tens[Math.floor(casedCount / 10) - 1].visible = true;
-            }
-            else {
-                this.ones[onesPlace - 1].visible = true;
-                this.moveCasesBelow(casedCount);
-            }
-        }
-        else {
-            for (let i = 1; (casedCount + i - 1) % 10 != 0; i++) {
-                this.moveCasesBelow(casedCount - 10 + i);
-            }
-            this.game.add.tween(this.casesGroup).to({ x: DecimalDonuts.DONUT_CASE * 20 }, 800, Phaser.Easing.Linear.None, true, 500);
-        }
-    }
-    moveCasesBelow(count) {
-        let tensPlace = Math.floor(count / 10);
-        let onesPlace = count % 10;
-        for (let i = 1; i + tensPlace < 10; i++) {
-            let donutCase = this.cases[(i + tensPlace) * 10 + onesPlace - 1];
-            donutCase.parent = this.gameGroup;
-            this.game.add.tween(donutCase).to({ y: donutCase.y + DecimalDonuts.DONUT_CASE }, 200, null, true);
-        }
-    }
 }
 class GenericGame {
-    constructor(width, height) {
-        // title: Phaser.Text
-        // timer: Phaser.Text
-        this.stars = [];
+    constructor(width, height, backGroundColor) {
+        this.score = 0;
         this.game = new Phaser.Game({
             width: width,
             height: height,
@@ -357,20 +381,19 @@ class GenericGame {
                 render: () => this.render()
             }
         });
-        this.decimalDonuts = new DecimalDonuts(this.game);
+        window["game"] = this.game;
+        this.decimalDonuts = new DecimalDonuts(this);
+        this.backgroundColor = backGroundColor;
     }
     preload() {
-        this.game.load.image("star", "assets/starGold.png");
         this.decimalDonuts.preload();
     }
     create() {
-        this.game.stage.backgroundColor = "#3f7cb6";
+        var time = Date.now() - window["time"];
+        console.log("took", time);
+        this.game.stage.backgroundColor = this.backgroundColor;
         this.game.time.advancedTiming = true;
-        this.game.time.desiredFps = 100;
-        this.window = new ScaledWindow(this.game, GenericGame.WIDTH, GenericGame.HEIGHT);
-        this.window.create();
-        let gameGroup = this.game.add.group(this.window.window);
-        gameGroup.y = GenericGame.HUD_HEIGHT;
+        let gameGroup = ScaledGroup.create(this.game, GenericGame.WIDTH, GenericGame.HEIGHT);
         this.decimalDonuts.create(gameGroup);
     }
     update() {
@@ -381,56 +404,52 @@ class GenericGame {
     render() {
         this.decimalDonuts.render();
     }
+    incrScore(scoreToAdd) {
+        this.score += scoreToAdd;
+        console.log(this.score);
+    }
 }
 GenericGame.HEIGHT = 1350;
 GenericGame.WIDTH = 1000;
-GenericGame.HUD_HEIGHT = 0;
-GenericGame.TIMER_STYLE = { font: "50px Arial" };
-GenericGame.TITLE_STYLE = { font: "80px Arial" };
-GenericGame.STAR_SIZE = 70;
-class ScaledWindow {
-    constructor(game, width, height) {
-        let originalWidth = game.width;
-        let originalHeight = game.height;
-        this.game = game;
-        this.width = width;
-        this.height = height;
-        this.window = this.game.add.group();
-        let ppux = originalWidth / width;
-        let ppuy = originalHeight / height;
+class ScaledGroup {
+    static create(game, width, height) {
+        let ppux = game.width / width;
+        let ppuy = game.height / height;
         let ppu = Math.min(ppux, ppuy);
         window["ppu"] = ppu;
-        this.window.x = ppux > ppu ? originalWidth / 2 - ppu * width / 2 : 0;
-        this.window.y = ppuy > ppu ? originalHeight / 2 - ppu * height / 2 : 0;
-        this.window.scale.setTo(ppu, ppu);
         console.log("Pixels Per Unit", ppu);
         console.log("Fitting:", ppux > ppuy ? "Vertical" : "Horizontal");
-    }
-    create() {
-        if (this.game.config.enableDebug || true) {
-            let graphics = this.game.add.graphics(0, 0, this.window);
-            for (let i = 0; i <= this.width; i += 10) {
-                let width = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0);
-                graphics.lineStyle(width, 0x404040, 0.1);
+        let group = game.add.group();
+        group.x = ppux > ppu ? game.width / 2 - ppu * width / 2 : 0;
+        group.y = ppuy > ppu ? game.height / 2 - ppu * height / 2 : 0;
+        group.scale.setTo(ppu, ppu);
+        if (game.config.enableDebug || true) {
+            let graphics = game.add.graphics(0, 0, group);
+            for (let i = 0; i <= width; i += 10) {
+                let lineWidth = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0);
+                graphics.lineStyle(lineWidth, 0x404040, 0.1);
                 graphics.moveTo(i, 0);
-                graphics.lineTo(i, this.height);
+                graphics.lineTo(i, height);
             }
-            for (let j = 0; j <= this.height; j += 10) {
-                let width = 1 + (j % 50 == 0 ? 2 : 0) + (j % 100 == 0 ? 1 : 0);
-                graphics.lineStyle(width, 0x404040, 0.1);
+            for (let j = 0; j <= height; j += 10) {
+                let lineWidth = 1 + (j % 50 == 0 ? 2 : 0) + (j % 100 == 0 ? 1 : 0);
+                graphics.lineStyle(lineWidth, 0x404040, 0.1);
                 graphics.moveTo(0, j);
-                graphics.lineTo(this.width, j);
+                graphics.lineTo(width, j);
             }
         }
+        return game.add.group(group);
     }
 }
 window.onload = () => {
+    window["time"] = Date.now();
     var game;
+    console.log("loaded");
     if (detectMobile()) {
-        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93);
+        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#3f7cb6");
     }
     else {
-        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93);
+        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#3f7cb6");
     }
 };
 function detectMobile() {
