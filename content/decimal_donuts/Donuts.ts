@@ -40,7 +40,7 @@ class DecimalDonuts {
         this.donutTray.create(gameGroup, this.donutCases.cases[0].position)
         this.donutTray.donutsCased.add(this.donutsCased, this)
 
-        this.restart(99)
+        this.restart(40)
     }
 
     update() {
@@ -65,7 +65,7 @@ class DecimalDonuts {
     }
 
     caseSelected(noOfCases: number) {
-        this.donutTray.moveToCases()
+        this.donutTray.moveToCases(this.donutCases.casesGroup)
     }
 
     donutsCased(casingDone: boolean, casedCount: number) {
@@ -74,7 +74,7 @@ class DecimalDonuts {
             window.setTimeout(() => {
                 let count = this.game.rnd.integerInRange(1, 99)
                 this.restart(count)
-            }, 1000)
+            }, 3000)
         }
     }
 
@@ -95,11 +95,11 @@ class DonutFactory {
     donutsNumber: Phaser.BitmapText
     hands: Phaser.Group
     oneHand: Phaser.Group
+    casesGroup: Phaser.Group
 
     donutsCased: Phaser.Signal
 
-    glitMask: Phaser.Graphics
-
+    
     donutCount: number
     casedDonutCount: number
     firstCasePosition: Phaser.Point
@@ -224,7 +224,8 @@ class DonutFactory {
         return baseDonut
     }
 
-    moveToCases() {
+    moveToCases(casesGroup: Phaser.Group) {
+        this.casesGroup = casesGroup
         this.hands.visible = true
         this.moveTenToCases()
     }
@@ -248,7 +249,7 @@ class DonutFactory {
             this.game.add.tween(this.oneHand).to({ x: x, y: y }, time, null, true, 0, 0, false).onComplete.add(() => {
                 this.casedDonutCount++
                 this.donutsCased.dispatch(false, this.casedDonutCount)
-                this.donutsGroup.addChild(donutToMove)
+                this.casesGroup.addChild(donutToMove)
                 donutToMove.x = x + DecimalDonuts.EDGE_PADDING
                 donutToMove.y = y
                 this.moveOneToCase()
@@ -280,7 +281,7 @@ class DonutFactory {
                 this.casedDonutCount += 10
                 this.donutsCased.dispatch(false, this.casedDonutCount)
                 donutsToMove.forEach((donut, index) => {
-                    this.donutsGroup.addChild(donut)
+                    this.casesGroup.addChild(donut)
                     donut.x += DecimalDonuts.EDGE_PADDING
                     donut.y = y
                 });
@@ -298,6 +299,8 @@ class DonutCases {
     game: Phaser.Game
     cases: Phaser.Group[] = []
 
+    gameGroup: Phaser.Group
+    casesGroup: Phaser.Group
     onesGroup: Phaser.Group
     tens: Phaser.BitmapText[] = []
     ones: Phaser.BitmapText[] = []
@@ -312,6 +315,8 @@ class DonutCases {
     }
 
     create(gameGroup: Phaser.Group) {
+        this.gameGroup = gameGroup
+
         let donutScale = (DecimalDonuts.DONUT_SIZE * 1) / this.game.cache.getFrameByName("donuts", "donut_1").width
 
         let hoverFunc = (blackDonut: Phaser.Sprite) => {
@@ -325,8 +330,10 @@ class DonutCases {
             }
         }
 
+        this.casesGroup = this.game.add.group(gameGroup)
+
         for (let i = 0; i < this.casesCount; i++) {
-            this.cases[i] = this.game.add.group(gameGroup)
+            this.cases[i] = this.game.add.group(this.casesGroup)
             let isBlack = (Math.floor(i / 10) % 2) == (i % 2);
 
             let blackDonut: Phaser.Sprite = this.cases[i].create(DecimalDonuts.DONUT_CASE / 2, DecimalDonuts.DONUT_CASE / 2, "donuts", "donut_" + (isBlack ? "black_case" : "white_case"))
@@ -390,9 +397,12 @@ class DonutCases {
     }
 
     restart(count: number) {
+        this.casesGroup.renderable = false
+        this.casesGroup.x = - DecimalDonuts.CASE_PADDING * 20
         this.previewCase = null
         this.selectedCase = null
         for (let i = 0; i < this.cases.length; i++) {
+            this.cases[i].parent = this.casesGroup
             this.cases[i].x = DecimalDonuts.EDGE_PADDING + (i % 10) * DecimalDonuts.DONUT_CASE
             this.cases[i].y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + Math.floor(i / 10) * DecimalDonuts.DONUT_CASE
         }
@@ -404,19 +414,41 @@ class DonutCases {
             this.ones[i].visible = false
             this.tens[i].visible = false
         }
+
+        this.game.add.tween(this.casesGroup).to({x : 0}, 800, Phaser.Easing.Bounce.Out, true)
+        
     }
 
     donutsCased(casingDone: boolean, casedCount: number) {
+       
         if (!casingDone) {
+            let tensPlace = Math.floor(casedCount/ 10)
             let onesPlace = casedCount % 10
             if (onesPlace == 0) {
                 this.tens[Math.floor(casedCount / 10) - 1].visible = true
             } else {
                 this.ones[onesPlace - 1].visible = true
+                this.moveCasesBelow(casedCount)
             }
+        } else {
+            for (let i = 1; (casedCount + i - 1) % 10 != 0; i++) {
+                this.moveCasesBelow(casedCount - 10 + i)
+            }
+
+            this.game.add.tween(this.casesGroup).to({x : DecimalDonuts.DONUT_CASE * 20}, 800, Phaser.Easing.Linear.None, true, 500)
         }
+
     }
 
+    moveCasesBelow(count) {
+        let tensPlace = Math.floor(count/ 10)
+        let onesPlace = count % 10
+        for (let i = 1; i + tensPlace < 10; i++) {
+            let donutCase = this.cases[(i + tensPlace) * 10 + onesPlace - 1]
+            donutCase.parent = this.gameGroup
+            this.game.add.tween(donutCase).to({y: donutCase.y + DecimalDonuts.DONUT_CASE}, 200, null, true)
+        }
+    }
 
 }
 
