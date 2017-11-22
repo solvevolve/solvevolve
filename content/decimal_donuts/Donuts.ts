@@ -1,12 +1,98 @@
 /// <reference path="../../typescript/phaser.comments.d.ts" />
-class DonutTray {
+class DecimalDonuts {
+
+    static DONUTS_SPAN_HEIGHT = 350
+    static EDGE_PADDING = 10
+    static DONUT_SIZE = 80
+    static CASE_PADDING = 12
+    static DONUT_CASE = DecimalDonuts.DONUT_SIZE + DecimalDonuts.CASE_PADDING
+
+    static DONUT_MIN_SPEED = 50
+    static DONUT_MAX_SPEED = 130
+
+    static HANDS_SPEED = 0.6
+
+
+    game: Phaser.Game
+    gameGroup: Phaser.Group
+    donutCases: DonutCases
+    donutTray: DonutFactory
+
+    constructor(game: Phaser.Game) {
+        this.game = game
+        this.donutCases = new DonutCases(this.game)
+        this.donutTray = new DonutFactory(this.game)
+    }
+
+    preload() {
+        this.game.load.atlasJSONHash("donuts", "assets/donuts.png", "assets/donuts.json")
+        this.game.load.bitmapFont("numbers_40", "assets/fonts/KaoriGel_40.png", "assets/fonts/KaoriGel_40.fnt")
+        this.game.load.bitmapFont("numbers_240", "assets/fonts/KaoriGel_240.png", "assets/fonts/KaoriGel_240.fnt")
+    }
+
+    create(gameGroup: Phaser.Group) {
+        this.gameGroup = gameGroup
+        this.game.physics.startSystem(Phaser.Physics.ARCADE);
+
+        this.donutCases.create(gameGroup)
+        this.donutCases.caseSelected.add(this.caseSelected, this)
+
+        this.donutTray.create(gameGroup, this.donutCases.cases[0].position)
+        this.donutTray.donutsCased.add(this.donutsCased, this)
+
+        this.restart(99)
+    }
+
+    update() {
+        this.game.physics.arcade.collide(this.gameGroup, this.donutTray.borderGroup)
+    }
+
+    render() {
+        if (this.game.config.enableDebug) {
+            this.gameGroup.children.forEach(el => {
+                if (el instanceof Phaser.Sprite) {
+                    this.game.debug.body(el)
+                }
+                if (el instanceof Phaser.Group) {
+                    el.children.forEach(ch => {
+                        if (ch instanceof Phaser.Sprite) {
+                            this.game.debug.body(ch)
+                        }
+                    })
+                }
+            })
+        }
+    }
+
+    caseSelected(noOfCases: number) {
+        this.donutTray.moveToCases()
+    }
+
+    donutsCased(casingDone: boolean, casedCount: number) {
+        this.donutCases.donutsCased(casingDone, casedCount)
+        if (casingDone) {
+            window.setTimeout(() => {
+                let count = this.game.rnd.integerInRange(1, 99)
+                this.restart(count)
+            }, 1000)
+        }
+    }
+
+    restart(count: number) {
+        this.donutCases.restart(count)
+        this.donutTray.restart(count)
+    }
+}
+
+
+class DonutFactory {
     game: Phaser.Game
     gameGroup: Phaser.Group
     borderGroup: Phaser.Group
 
     donutsGroup: Phaser.Group
     donuts: Phaser.Sprite[] = []
-    donutsNumber: Phaser.Text
+    donutsNumber: Phaser.BitmapText
     hands: Phaser.Group
     oneHand: Phaser.Group
 
@@ -37,6 +123,7 @@ class DonutTray {
             body.immovable = true
             border.body.setSize(window["ppu"] * width, window["ppu"] * height)
         }
+
         let thickness = 1
         createBorder(DecimalDonuts.EDGE_PADDING, 0, DecimalDonuts.DONUT_CASE * 10, thickness)
         createBorder(DecimalDonuts.EDGE_PADDING, 0, thickness, DecimalDonuts.DONUTS_SPAN_HEIGHT)
@@ -48,10 +135,9 @@ class DonutTray {
         graphics.lineStyle(5, 0x000000, 1);
         graphics.drawRect(DecimalDonuts.EDGE_PADDING, 0, DecimalDonuts.DONUT_CASE * 10, DecimalDonuts.DONUTS_SPAN_HEIGHT)
 
-        this.donutsNumber = this.game.add.text(DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 5,
-            DecimalDonuts.DONUTS_SPAN_HEIGHT / 2, "", DecimalDonuts.DONUTS_NUMBER_STYLE, this.gameGroup)
-        this.donutsNumber.anchor.setTo(0.5, 0.5)
-        
+        this.donutsNumber = this.game.add.bitmapText(DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 5, DecimalDonuts.DONUTS_SPAN_HEIGHT / 2, "numbers_240", "", 240, this.gameGroup)
+        this.donutsNumber.anchor.setTo(0.5, 0.3)
+
 
         this.hands = this.game.add.group(this.gameGroup)
         this.hands.x = DecimalDonuts.EDGE_PADDING
@@ -144,7 +230,6 @@ class DonutTray {
     }
 
     moveOneToCase() {
-        console.log("moving one")
         if (this.donutCount > this.casedDonutCount) {
             let donutToMove = this.donuts[this.casedDonutCount]
             donutToMove.physicsEnabled = false
@@ -214,12 +299,13 @@ class DonutCases {
     cases: Phaser.Group[] = []
 
     onesGroup: Phaser.Group
-    tens: Phaser.Text[] = []
-    ones: Phaser.Text[] = []
+    tens: Phaser.BitmapText[] = []
+    ones: Phaser.BitmapText[] = []
     caseSelected: Phaser.Signal
     selectedCase?: number
     previewCase?: number
-    
+
+    casesCount = 100
 
     constructor(game: Phaser.Game) {
         this.game = game
@@ -239,16 +325,11 @@ class DonutCases {
             }
         }
 
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < this.casesCount; i++) {
             this.cases[i] = this.game.add.group(gameGroup)
-            let isBlack = (Math.floor(i / 10) % 2 ) == (i % 2);
-            let graphics = this.game.add.graphics(0, 0, this.cases[i]);
-            graphics.lineStyle(5, 0x000000, 1);
-            //graphics.beginFill( isBlack ? 0x242424 : 0xC4C4C4, 1)
-            graphics.drawRect(0, 0, DecimalDonuts.DONUT_CASE, DecimalDonuts.DONUT_CASE);
-            graphics.endFill()
+            let isBlack = (Math.floor(i / 10) % 2) == (i % 2);
 
-            let blackDonut: Phaser.Sprite = this.cases[i].create(DecimalDonuts.DONUT_CASE / 2, DecimalDonuts.DONUT_CASE / 2, "donuts", "donut_" + (isBlack ? "black" : "white"))
+            let blackDonut: Phaser.Sprite = this.cases[i].create(DecimalDonuts.DONUT_CASE / 2, DecimalDonuts.DONUT_CASE / 2, "donuts", "donut_" + (isBlack ? "black_case" : "white_case"))
             blackDonut.data.caseIndex = i
             blackDonut.alpha = 1
             blackDonut.anchor.setTo(0.5, 0.5)
@@ -261,22 +342,25 @@ class DonutCases {
         }
         this.caseSelected = new Phaser.Signal()
 
+        let guideFontSize = 30
+
         for (let i = 0; i < 9; i++) {
             let x = DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 10.5
             let y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (i + 0.5)
-            this.tens[i] = this.game.add.text(x, y, String((i + 1) * 10), DecimalDonuts.CASE_NUMBER_GUIDE_STYLE, gameGroup)
-            this.tens[i].anchor.setTo(0.5, 0.5)
+            this.tens[i] = this.game.add.bitmapText(x, y, "numbers_40", String((i + 1) * 10), guideFontSize, gameGroup)
+            this.tens[i].anchor.setTo(0.5, 0.3)
             let fontSize = this.tens[i].fontSize as number
             this.game.add.tween(this.tens[i]).to({ fontSize: fontSize * 1.5 }, 1000, null, true, 0, -1, true)
         }
 
         this.onesGroup = this.game.add.group(gameGroup)
+
         this.onesGroup.y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * 10.5
         for (let i = 0; i < 9; i++) {
             let x = DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (i + 0.5)
             let y = DecimalDonuts.DONUTS_SPAN_HEIGHT + DecimalDonuts.EDGE_PADDING + DecimalDonuts.DONUT_CASE * (10.5)
-            this.ones[i] = this.game.add.text(x, 0, "9" + String((i + 1)), DecimalDonuts.CASE_NUMBER_GUIDE_STYLE, this.onesGroup)
-            this.ones[i].anchor.setTo(0.5, 0.5)
+            this.ones[i] = this.game.add.bitmapText(x, 0,"numbers_40" , "9" + String((i + 1)), guideFontSize, this.onesGroup)
+            this.ones[i].anchor.setTo(0.5, 0.7)
 
             let fontSize = this.ones[i].fontSize as number
             this.game.add.tween(this.ones[i]).to({ fontSize: fontSize * 1.5 }, 1000, null, true, 0, -1, true)
@@ -336,119 +420,23 @@ class DonutCases {
 
 }
 
-class DecimalDonuts {
-
-    static DONUTS_SPAN_HEIGHT = 300
-    static EDGE_PADDING = 10
-    static DONUT_SIZE = 75
-    static CASE_PADDING = 15
-    static DONUT_CASE = DecimalDonuts.DONUT_SIZE + DecimalDonuts.CASE_PADDING
-    static CASE_TEXT_SIZE = 80
-    static DONUTS_NUMBER_STYLE = {
-        fontSize: 220,
-        stroke: "#000000",
-        strokeThickness: 15,
-        fill: "#FFFFFFF3"
-    }
-
-    static CASE_NUMBER_GUIDE_STYLE = {
-        fontSize: 40
-    }
-
-    static DONUT_MIN_SPEED = 20
-    static DONUT_MAX_SPEED = 80
-
-    static HANDS_SPEED = 0.6
-
-
-    game: Phaser.Game
-    gameGroup: Phaser.Group
-    donutCases: DonutCases
-    donutTray: DonutTray
-
-    constructor(game: Phaser.Game) {
-        this.game = game
-        this.donutCases = new DonutCases(this.game)
-        this.donutTray = new DonutTray(this.game)
-    }
-
-    preload() {
-        this.game.load.atlasJSONHash("donuts", "assets/donuts.png", "assets/donuts.json")
-    }
-
-    create(gameGroup: Phaser.Group) {
-        this.gameGroup = gameGroup
-        this.game.physics.startSystem(Phaser.Physics.ARCADE);
-
-        this.donutCases.create(gameGroup)
-
-        this.donutCases.caseSelected.add(this.caseSelected, this)
-
-        this.donutTray.create(gameGroup, this.donutCases.cases[0].position)
-
-        this.donutTray.donutsCased.add(this.donutsCased, this)
-
-
-        this.restart(2)
-    }
-
-    update() {
-        this.game.physics.arcade.collide(this.gameGroup, this.donutTray.borderGroup)
-    }
-
-    render() {
-        if (this.game.config.enableDebug) {
-            this.gameGroup.children.forEach(el => {
-                if (el instanceof Phaser.Sprite) {
-                    this.game.debug.body(el)
-                }
-                if (el instanceof Phaser.Group) {
-                    el.children.forEach(ch => {
-                        if (ch instanceof Phaser.Sprite) {
-                            this.game.debug.body(ch)
-                        }
-                    })
-                }
-            })
-        }
-    }
-
-    caseSelected(noOfCases: number) {
-        this.donutTray.moveToCases()
-    }
-
-    donutsCased(casingDone: boolean, casedCount: number) {
-        this.donutCases.donutsCased(casingDone, casedCount)
-        if (casingDone) {
-            window.setTimeout(() => {
-                this.restart(this.game.rnd.integerInRange(1, 99))
-            }, 1000)
-        }
-
-
-    }
-
-    restart(count: number) {
-        this.donutCases.restart(count)
-        this.donutTray.restart(count)
-    }
-}
-
 class GenericGame {
 
-    static HEIGHT = 1460
+    static HEIGHT = 1350
     static WIDTH = 1000
-    static HUD_HEIGHT = 160
-    static TIMER_STYLE: Phaser.PhaserTextStyle = { fontSize: 50 }
-    static TITLE_STYLE: Phaser.PhaserTextStyle = { fontSize: 80 }
+    static HUD_HEIGHT = 0
+    static TIMER_STYLE: Phaser.PhaserTextStyle = { font: "50px Arial" }
+    static TITLE_STYLE: Phaser.PhaserTextStyle = { font: "80px Arial" }
     static STAR_SIZE = 70
 
     game: Phaser.Game
     window: ScaledWindow
-    title: Phaser.Text
-    timer: Phaser.Text
+    // title: Phaser.Text
+    // timer: Phaser.Text
     stars: Phaser.Sprite[] = []
     decimalDonuts: DecimalDonuts
+
+    elapsed: number
 
     constructor(width: number, height: number) {
         this.game = new Phaser.Game({
@@ -469,38 +457,17 @@ class GenericGame {
 
     preload() {
         this.game.load.image("star", "assets/starGold.png")
-        this.game.stage.backgroundColor = 0x3f7cb6
         this.decimalDonuts.preload()
+        
     }
 
     create() {
+        this.game.stage.backgroundColor = "#3f7cb6"
+        this.game.time.advancedTiming = true
+        this.game.time.desiredFps = 100
 
         this.window = new ScaledWindow(this.game, GenericGame.WIDTH, GenericGame.HEIGHT)
         this.window.create()
-
-        let starScale = GenericGame.STAR_SIZE / this.game.cache.getImage("star").width
-        let hudMiddle = GenericGame.HUD_HEIGHT / 2
-
-        this.timer = this.game.add.text(10, hudMiddle, "02:45", GenericGame.TIMER_STYLE, this.window.window)
-        this.timer.anchor.setTo(0, 0.5)
-        this.title = this.game.add.text(800, hudMiddle, "Decimal Donuts", GenericGame.TITLE_STYLE, this.window.window)
-        this.title.anchor.setTo(1, 0.5)
-        this.title.stroke = "#000000"
-        this.title.strokeThickness = 3
-        
-
-
-        this.stars[0] = this.game.add.sprite(850, hudMiddle, "star", null, this.window.window)
-        this.stars[1] = this.game.add.sprite(910, hudMiddle, "star", null, this.window.window)
-        this.stars[2] = this.game.add.sprite(970, hudMiddle, "star", null, this.window.window)
-
-        this.stars[0].scale.setTo(starScale)
-        this.stars[1].scale.setTo(starScale)
-        this.stars[2].scale.setTo(starScale)
-
-        this.stars[0].anchor.setTo(0.5, 0.5)
-        this.stars[1].anchor.setTo(0.5, 0.5)
-        this.stars[2].anchor.setTo(0.5, 0.5)
 
         let gameGroup = this.game.add.group(this.window.window)
         gameGroup.y = GenericGame.HUD_HEIGHT
@@ -510,6 +477,10 @@ class GenericGame {
 
     update() {
         this.decimalDonuts.update()
+        this.elapsed += this.game.time.elapsedMS
+
+        document.querySelector("#debug_info").innerHTML = "FPS:" + this.game.time.fps
+
     }
 
     render() {
@@ -522,7 +493,7 @@ class ScaledWindow {
     window: Phaser.Group
     width: number
     height: number
-    
+
     constructor(game: Phaser.Game, width: number, height: number) {
         let originalWidth = game.width
         let originalHeight = game.height
@@ -546,7 +517,7 @@ class ScaledWindow {
     }
 
     create() {
-        if (this.game.config.enableDebug) {
+        if (this.game.config.enableDebug || true) {
             let graphics = this.game.add.graphics(0, 0, this.window)
             for (let i = 0; i <= this.width; i += 10) {
                 let width = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0)
@@ -565,5 +536,37 @@ class ScaledWindow {
 }
 
 window.onload = () => {
-    var game = new GenericGame(window.innerWidth, window.innerHeight)
+    var game
+    if (detectMobile()) {
+        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93) 
+    } else {
+        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93)
+    }
 }
+
+function detectMobile() {
+    let ua = navigator.userAgent
+    if (ua.match(/Android/i)
+        || ua.match(/webOS/i)
+        || ua.match(/iPhone/i)
+        || ua.match(/iPod/i)) {
+            return true
+    } else {
+        return false
+    }
+}
+
+function toggleFullScreen() {
+    var doc: any = window.document;
+    var docEl = doc.documentElement;
+  
+    var requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    var cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+  
+    if(!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+      requestFullScreen.call(docEl);
+    }
+    else {
+      cancelFullScreen.call(doc);
+    }
+  }
