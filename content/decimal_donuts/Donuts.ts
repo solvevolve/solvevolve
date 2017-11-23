@@ -493,7 +493,7 @@ class DonutFactory extends Actor {
         }
 
         
-        let dnBuns = ["dn1", "dn2", "dn4", "dn4"]
+        let dnBuns = ["dn1", "dn2", "dn3", "dn4"]
         let dnCreams = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_cream")
         let dnEyes = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_eyes")
         let dnHands = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_hands")
