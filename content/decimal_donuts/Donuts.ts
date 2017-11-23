@@ -1,9 +1,9 @@
 /// <reference path="../../typescript/phaser.comments.d.ts" />
 class Config {
     static DONUTS_SPAN_HEIGHT = 350
-    static EDGE_PADDING = 10
-    static DONUT_SIZE = 85
-    static CASE_PADDING = 13
+    static EDGE_PADDING = 20
+    static DONUT_SIZE = 72
+    static CASE_PADDING = 24
     static DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING
 
     static DONUT_MIN_SPEED = 50
@@ -64,6 +64,7 @@ class DecimalDonuts {
     }
 
     render() {
+        this.actors.map(actor => actor.render())
     }
 
     levelOver() {
@@ -374,10 +375,11 @@ class DonutFactory extends Actor {
         let body: Phaser.Physics.Arcade.Body = border.body
         body.immovable = true
         border.body.setSize(window["ppu"] * width, window["ppu"] * height)
+        
     }
 
     private createBorders() {
-        let thickness = 1
+        let thickness = 10
         this.addBorder(0, 0, Config.DONUT_CASE * 10, thickness)
         this.addBorder(0, 0, thickness, Config.DONUTS_SPAN_HEIGHT)
         this.addBorder(Config.DONUT_CASE * 10, 0, thickness, Config.DONUTS_SPAN_HEIGHT)
@@ -413,10 +415,13 @@ class DonutFactory extends Actor {
 
         this.createBorders()
 
-        let donutTextureSize = this.game.cache.getFrameByName("donuts", "br1").width
-        let donutScale = Config.DONUT_CASE / donutTextureSize
+        let donutTextureSize = this.game.cache.getFrameByName("donuts", "base").width
+        let donutScale = Config.DONUT_SIZE / donutTextureSize
         let bounce = new Phaser.Point(1, 1)
-        let bodySize = new Phaser.Point(window["ppu"] * donutTextureSize, (1 - window["ppu"]) * donutTextureSize / 2)
+        let donutBodySize = donutTextureSize
+        
+        let y = (1 - window["ppu"]) * donutTextureSize/2
+        let bodySize = new Phaser.Point(window["ppu"] * donutBodySize, y)
 
         for (let i = 0; i < 100; i++) {
             this.donuts[i] = this.generateDonut(this.donutsPool)
@@ -427,7 +432,7 @@ class DonutFactory extends Actor {
             body.setSize(bodySize.x, bodySize.x, bodySize.y, bodySize.y)
 
         }
-
+        
     }
 
     restart() {
@@ -446,9 +451,9 @@ class DonutFactory extends Actor {
             let donut: Phaser.Sprite = this.donutsPool.getRandom()
             this.donutsInUse.add(donut, true)
 
-            donut.x = this.game.rnd.realInRange(Config.DONUT_CASE / 2, Config.DONUT_CASE * 9.5)
-            donut.y = this.game.rnd.realInRange(Config.DONUT_CASE / 2, Config.DONUTS_SPAN_HEIGHT - Config.DONUT_CASE / 2)
-
+            donut.x = this.game.rnd.realInRange(Config.DONUT_CASE, Config.DONUT_CASE * 9)
+            donut.y = this.game.rnd.realInRange(Config.DONUT_CASE, Config.DONUTS_SPAN_HEIGHT - Config.DONUT_CASE)
+            this.game.physics.enable(this.donuts[i], Phaser.Physics.ARCADE)
             let body: Phaser.Physics.Arcade.Body = donut.body
             body.angularVelocity = 100
             let angle = Phaser.Math.degToRad(this.game.rnd.angle())
@@ -465,6 +470,17 @@ class DonutFactory extends Actor {
         this.game.physics.arcade.collide(this.donutsInUse, this.donutBorder)
     }
 
+    render() { 
+        if (this.game.config.enableDebug) {
+            this.donuts.forEach(donut => {
+                this.game.debug.body(donut)
+            })
+            this.donutBorder.children.forEach(border => {
+                this.game.debug.body(border as Phaser.Sprite)
+            })
+        }
+    }
+
     private generateDonut(group: Phaser.Group): Phaser.Sprite {
 
         let stringToSprite = (imageName) => {
@@ -473,16 +489,29 @@ class DonutFactory extends Actor {
             return layer
         }
 
-        let donutChars = ["d1","d2", "d3", "d4"]
+        
+        let dnBuns = ["dn1", "dn2", "dn3", "dn4"].map( e => e + "_bun")
+        let dnCreams = ["dn1", "dn2", "dn3", "dn4"].map( e => e + "_cream")
+        let dnEyes = ["dn1", "dn2", "dn3", "dn4"].map( e => e + "_eyes")
+        let dnHands = ["dn1", "dn2", "dn3", "dn4"].map( e => e + "_hands")
+        let dnTop = ["dn1", "dn2", "dn3", "dn4"].map( e => e + "_top")
+        let dnToppings = ["dn1", "dn2", "dn3", "dn4"].map( e => e + "_toppings")
+
+
         let bases = ["donut_1", "donut_1", "donut_2", "donut_3"]
         let glazings = ["glazing_1", "glazing_2", "glazing_3", "glazing_4", "glazing_5", "glazing_6",
             "glazing_zigzag_1", "glazing_zigzag_2", "glazing_zigzag_3", "glazing_zigzag_4"]
         let sprinkles = ["sprinkles_1", "sprinkles_2", "sprinkles_3", "sprinkles_4", "sprinkles_5",
             "stripes_1", "stripes_2", "stripes_3"]
 
-        let baseDonut: Phaser.Sprite = stringToSprite(this.game.rnd.pick(donutChars))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(glazings)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(sprinkles)))
+        let baseDonut: Phaser.Sprite = stringToSprite("base")
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnBuns)))
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)))
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)))
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnEyes)))
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnHands)))
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnTop)))
+        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnToppings)))
 
         return baseDonut
     }
@@ -495,8 +524,9 @@ class DonutFactory extends Actor {
 
 class GenericGame {
 
-    static HEIGHT = 1350
+    static HEIGHT = 1460
     static WIDTH = 1000
+    static HUD_HEIGHT = 100
 
     game: Phaser.Game
 
@@ -505,12 +535,17 @@ class GenericGame {
     score = 0
     backgroundColor: string
 
+    timer: Phaser.BitmapText
+    title: Phaser.BitmapText
+
+
+
     constructor(width: number, height: number, backGroundColor: string) {
         this.game = new Phaser.Game({
             width: width,
             height: height,
             parent: "content",
-            enableDebug: false,
+            enableDebug: true,
             state: {
                 preload: () => this.preload(),
                 create: () => this.create(),
@@ -528,19 +563,18 @@ class GenericGame {
     }
 
     create() {
-        var time = Date.now() - window["time"]
-        console.log("took", time)
+        
         this.game.stage.backgroundColor = this.backgroundColor
         this.game.time.advancedTiming = true
 
         let gameGroup = ScaledGroup.create(this.game, GenericGame.WIDTH, GenericGame.HEIGHT)
+        gameGroup.y += GenericGame.HUD_HEIGHT
         this.decimalDonuts.create(gameGroup)
     }
 
     update() {
         this.decimalDonuts.update()
         this.elapsed += this.game.time.elapsedMS
-        document.querySelector("#debug_info").innerHTML = "FPS:" + this.game.time.fps
     }
 
     render() {
@@ -570,7 +604,7 @@ class ScaledGroup {
         group.scale.setTo(ppu, ppu)
 
 
-        if (game.config.enableDebug) {
+        if (game.config.enableDebug ) {
             let graphics = game.add.graphics(0, 0, group)
             for (let i = 0; i <= width; i += 10) {
                 let lineWidth = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0)
@@ -591,16 +625,7 @@ class ScaledGroup {
 }
 
 window.onload = () => {
-    window["time"] = Date.now()
-    var game
-    console.log("loaded")
-    if (detectMobile()) {
-        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#FFF49B")
-    } else {
-        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#FFF49B")
-    }
-
-
+    var game = new GenericGame(window.innerWidth, window.innerHeight, "#FFF49B")
 }
 
 function detectMobile() {
