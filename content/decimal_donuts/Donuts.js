@@ -3,8 +3,8 @@ class Config {
 }
 Config.DONUTS_SPAN_HEIGHT = 350;
 Config.EDGE_PADDING = 20;
-Config.DONUT_SIZE = 72;
-Config.CASE_PADDING = 24;
+Config.DONUT_SIZE = 64;
+Config.CASE_PADDING = 36;
 Config.DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING;
 Config.DONUT_MIN_SPEED = 50;
 Config.DONUT_MAX_SPEED = 130;
@@ -125,6 +125,7 @@ class DonutPackaging extends Actor {
         this.wasted = this.game.add.group(group);
         this.casesPool.visible = false;
         let donutScale = Config.DONUT_CASE / this.game.cache.getFrameByName("donuts", "br1").width;
+        console.log("holder scale", donutScale);
         let hoverFunc = (blackDonut) => {
             this.hover(blackDonut.data.caseIndex);
         };
@@ -317,6 +318,7 @@ class DonutFactory extends Actor {
         this.createBorders();
         let donutTextureSize = this.game.cache.getFrameByName("donuts", "base").width;
         let donutScale = Config.DONUT_SIZE / donutTextureSize;
+        console.log("donut scale", donutScale);
         let bounce = new Phaser.Point(1, 1);
         let donutBodySize = donutTextureSize;
         let y = (1 - window["ppu"]) * donutTextureSize / 2;
@@ -370,15 +372,15 @@ class DonutFactory extends Actor {
     generateDonut(group) {
         let stringToSprite = (imageName) => {
             let layer = group.create(0, 0, "donuts", imageName);
-            layer.anchor.setTo(0.5, 0.6);
+            layer.anchor.setTo(0.5, 0.5);
             return layer;
         };
-        let dnBuns = ["dn1", "dn2", "dn3", "dn4"].map(e => e + "_bun");
-        let dnCreams = ["dn1", "dn2", "dn3", "dn4"].map(e => e + "_cream");
-        let dnEyes = ["dn1", "dn2", "dn3", "dn4"].map(e => e + "_eyes");
-        let dnHands = ["dn1", "dn2", "dn3", "dn4"].map(e => e + "_hands");
-        let dnTop = ["dn1", "dn2", "dn3", "dn4"].map(e => e + "_top");
-        let dnToppings = ["dn1", "dn2", "dn3", "dn4"].map(e => e + "_toppings");
+        let dnBuns = ["dn1", "dn2", "dn4", "dn4"];
+        let dnCreams = ["dn1", "dn2", "dn4", "dn4"].map(e => e + "_cream");
+        let dnEyes = ["dn1", "dn2", "dn4", "dn4"].map(e => e + "_eyes");
+        let dnHands = ["dn1", "dn2", "dn4", "dn4"].map(e => e + "_hands");
+        let dnTop = ["dn1", "dn2", "dn4", "dn4"].map(e => e + "_top");
+        let dnToppings = ["dn1", "dn2", "dn4", "dn4"].map(e => e + "_toppings");
         let bases = ["donut_1", "donut_1", "donut_2", "donut_3"];
         let glazings = ["glazing_1", "glazing_2", "glazing_3", "glazing_4", "glazing_5", "glazing_6",
             "glazing_zigzag_1", "glazing_zigzag_2", "glazing_zigzag_3", "glazing_zigzag_4"];
@@ -386,12 +388,12 @@ class DonutFactory extends Actor {
             "stripes_1", "stripes_2", "stripes_3"];
         let baseDonut = stringToSprite("base");
         baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnBuns)));
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)));
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)));
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnEyes)));
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnHands)));
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnTop)));
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnToppings)));
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnEyes)))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnHands)))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnTop)))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnToppings)))
         return baseDonut;
     }
 }
