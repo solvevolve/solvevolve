@@ -402,7 +402,7 @@ class GenericGame {
             width: width,
             height: height,
             parent: "content",
-            enableDebug: true,
+            enableDebug: false,
             state: {
                 preload: () => this.preload(),
                 create: () => this.create(),
