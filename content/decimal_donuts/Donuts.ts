@@ -167,7 +167,7 @@ class DonutPackaging extends Actor {
         this.wasted = this.game.add.group(group)
         this.casesPool.visible = false
 
-        let donutScale = (Config.DONUT_SIZE * 1) / this.game.cache.getFrameByName("donuts", "donut_1").width
+        let donutScale = Config.DONUT_CASE  / this.game.cache.getFrameByName("donuts", "br1").width
 
         let hoverFunc = (blackDonut: Phaser.Sprite) => {
             this.hover(blackDonut.data.caseIndex)
@@ -184,7 +184,7 @@ class DonutPackaging extends Actor {
         for (let i = 0; i < this.casesCount; i++) {
             this.cases[i] = this.game.add.group(this.casesPool)
             let isBlack = (Math.floor(i / 10) % 2) == (i % 2);
-            let blackDonut: Phaser.Sprite = this.cases[i].create(0, 0, "donuts", "donut_" + (isBlack ? "black_case" : "white_case"))
+            let blackDonut: Phaser.Sprite = this.cases[i].create(0, 0, "donuts", "br" + (isBlack ? "1" : "2"))
             blackDonut.data.caseIndex = i
             blackDonut.anchor.setTo(0.5, 0.5)
             blackDonut.scale.setTo(donutScale, donutScale)
@@ -384,14 +384,17 @@ class DonutFactory extends Actor {
         this.addBorder(0, Config.DONUTS_SPAN_HEIGHT, Config.DONUT_CASE * 10, thickness)
 
         let graphics = this.game.add.graphics(0, 0, this.donutBorder)
-        graphics.lineStyle(5, 0x000000, 1);
+        graphics.lineStyle(0, 0x000000, 1);
+        graphics.beginFill(0xF65277, 1)
         graphics.drawRect(0, 0, Config.DONUT_CASE * 10, Config.DONUTS_SPAN_HEIGHT)
-
+        graphics.endFill()
     }
 
     prepare(donut: Phaser.Sprite) {
         donut.body.velocity.setTo(0, 0)
         donut.body.angularVelocity = 0
+        donut.body.angle = 0
+        donut.angle = 0
     }
 
     preload(game: Phaser.Game) {
@@ -410,8 +413,8 @@ class DonutFactory extends Actor {
 
         this.createBorders()
 
-        let donutTextureSize = this.game.cache.getFrameByName("donuts", "donut_1").width
-        let donutScale = Config.DONUT_SIZE / donutTextureSize
+        let donutTextureSize = this.game.cache.getFrameByName("donuts", "br1").width
+        let donutScale = Config.DONUT_CASE / donutTextureSize
         let bounce = new Phaser.Point(1, 1)
         let bodySize = new Phaser.Point(window["ppu"] * donutTextureSize, (1 - window["ppu"]) * donutTextureSize / 2)
 
@@ -466,19 +469,20 @@ class DonutFactory extends Actor {
 
         let stringToSprite = (imageName) => {
             let layer: Phaser.Sprite = group.create(0, 0, "donuts", imageName)
-            layer.anchor.setTo(0.5, 0.5);
+            layer.anchor.setTo(0.5, 0.6);
             return layer
         }
 
+        let donutChars = ["d1","d2", "d3", "d4"]
         let bases = ["donut_1", "donut_1", "donut_2", "donut_3"]
         let glazings = ["glazing_1", "glazing_2", "glazing_3", "glazing_4", "glazing_5", "glazing_6",
             "glazing_zigzag_1", "glazing_zigzag_2", "glazing_zigzag_3", "glazing_zigzag_4"]
         let sprinkles = ["sprinkles_1", "sprinkles_2", "sprinkles_3", "sprinkles_4", "sprinkles_5",
             "stripes_1", "stripes_2", "stripes_3"]
 
-        let baseDonut: Phaser.Sprite = stringToSprite(this.game.rnd.pick(bases))
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(glazings)))
-        baseDonut.addChild(stringToSprite(this.game.rnd.pick(sprinkles)))
+        let baseDonut: Phaser.Sprite = stringToSprite(this.game.rnd.pick(donutChars))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(glazings)))
+        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(sprinkles)))
 
         return baseDonut
     }
@@ -566,7 +570,7 @@ class ScaledGroup {
         group.scale.setTo(ppu, ppu)
 
 
-        if (game.config.enableDebug || true) {
+        if (game.config.enableDebug) {
             let graphics = game.add.graphics(0, 0, group)
             for (let i = 0; i <= width; i += 10) {
                 let lineWidth = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0)
@@ -591,9 +595,9 @@ window.onload = () => {
     var game
     console.log("loaded")
     if (detectMobile()) {
-        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#3f7cb6")
+        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#FFF49B")
     } else {
-        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#3f7cb6")
+        game = new GenericGame(window.innerWidth, window.innerHeight * 0.93, "#FFF49B")
     }
 
 
