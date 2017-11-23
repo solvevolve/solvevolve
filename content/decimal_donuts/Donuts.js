@@ -4,7 +4,7 @@ class Config {
 Config.DONUTS_SPAN_HEIGHT = 350;
 Config.EDGE_PADDING = 20;
 Config.DONUT_SIZE = 64;
-Config.CASE_PADDING = 36;
+Config.CASE_PADDING = 32;
 Config.DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING;
 Config.DONUT_MIN_SPEED = 50;
 Config.DONUT_MAX_SPEED = 130;

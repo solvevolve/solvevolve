@@ -3,7 +3,7 @@ class Config {
     static DONUTS_SPAN_HEIGHT = 350
     static EDGE_PADDING = 20
     static DONUT_SIZE = 64
-    static CASE_PADDING = 36
+    static CASE_PADDING = 32
     static DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING
 
     static DONUT_MIN_SPEED = 50
