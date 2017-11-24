@@ -83,7 +83,7 @@ class DonutPackaging extends Actor {
             this.core.incrScore(Config.SCORE_PER_ROUND);
             this.packedDonuts.forEach((donut, index) => {
                 donut.angle = 0;
-                let tween = this.game.add.tween(donut).to({ angle: -60 }, Config.CASES_DROP_TIME, Phaser.Easing.Bounce.Out, true, 0, 1, true);
+                let tween = this.game.add.tween(donut).to({ angle: -30 }, Config.CASES_DROP_TIME / 2, Phaser.Easing.Bounce.Out, true, 0, 1, true);
                 if (index + 1 == this.packedCount) {
                     tween.onComplete.add(() => {
                         this.endRound();
@@ -97,17 +97,16 @@ class DonutPackaging extends Actor {
                     this.wasted.add(this.cases[i], true);
                 }
             }
-            this.packedDonuts.forEach((donut, index) => {
-                donut.angle = 140;
-                let tween = this.game.add.tween(donut).to({ angle: 160 }, Config.CASES_DROP_TIME / 2, Phaser.Easing.Linear.None, true, 0, 1, true);
-                if (index + 1 == this.packedDonuts.length) {
-                    tween.onComplete.add(() => {
-                        this.endRound();
-                    });
-                }
-            });
             this.game.add.tween(this.wasted).to({ y: Config.CASES_OUT_RANGE }, Config.CASES_DROP_TIME, Phaser.Easing.Exponential.In, true).onComplete.add(() => {
-                // this.endRound()
+                this.packedDonuts.forEach((donut, index) => {
+                    donut.angle = 140;
+                    let tween = this.game.add.tween(donut).to({ angle: 160 }, Config.CASES_DROP_TIME / 2, Phaser.Easing.Linear.None, true, 0, 1, true);
+                    if (index + 1 == this.packedDonuts.length) {
+                        tween.onComplete.add(() => {
+                            this.endRound();
+                        });
+                    }
+                });
             });
         }
     }
@@ -326,6 +325,7 @@ class DonutFactory extends Actor {
     prepare(donut) {
         donut.body.velocity.setTo(0, 0);
         donut.body.angularVelocity = 0;
+        donut.angle = 0;
     }
     create(group) {
         this.donutBorder = this.game.add.group(group);
