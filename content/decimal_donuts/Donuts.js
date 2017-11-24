@@ -8,7 +8,7 @@ Config.CASE_PADDING = 30;
 Config.DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING;
 Config.DONUT_MIN_SPEED = 50;
 Config.DONUT_MAX_SPEED = 130;
-Config.HANDS_SPEED = 0.9;
+Config.HANDS_SPEED = 1.1;
 Config.CASES_OUT_RANGE = Config.DONUT_CASE * 20;
 Config.CASES_IN_OUT_TIME = 800;
 Config.CASES_DROP_TIME = 800;
@@ -34,11 +34,16 @@ class DecimalDonuts {
         this.game.load.bitmapFont("numbers_50", "assets/fonts/varela_50.png", "assets/fonts/varela_50.fnt");
         this.game.load.bitmapFont("numbers_100", "assets/fonts/varela_100.png", "assets/fonts/varela_100.fnt");
         this.game.load.bitmapFont("numbers_200", "assets/fonts/varela_200.png", "assets/fonts/varela_200.fnt");
+        this.game.load.audio("loop", "assets/sound/German Virtue.ogg", true);
+        this.game.load.audio("win", "assets/sound/correct.ogg", true);
+        this.game.load.audio("lose", "assets/sound/lose.wav", true);
         this.actors.map(actor => actor.preload(this.game, this.core));
     }
     create(gameGroup) {
         this.gameGroup = gameGroup;
         this.gameGroup.x += Config.EDGE_PADDING;
+        let loop = this.game.add.audio("loop", 1, true);
+        loop.loopFull(0.4);
         this.actors.map(actor => actor.create(gameGroup));
     }
     update() {
@@ -56,7 +61,7 @@ class DecimalDonuts {
     }
     roundOver() {
         this.roundCompleted++;
-        if (this.roundCompleted == DecimalDonuts.ROUNDS) {
+        if (this.roundCompleted == Config.ROUNDS_PER_PLAY) {
             this.core.positionInPop();
         }
         else {
@@ -64,7 +69,6 @@ class DecimalDonuts {
         }
     }
 }
-DecimalDonuts.ROUNDS = 3;
 class Actor {
     preload(game, core) {
         this.game = game;
@@ -97,8 +101,10 @@ class DonutPackaging extends Actor {
                     });
                 }
             });
+            this.win.play();
         }
         else {
+            this.lose.play();
             if (this.packedCount < this.selectedCase + 1) {
                 for (let i = this.packedCount; i <= this.selectedCase; i++) {
                     this.wasted.add(this.cases[i], true);
@@ -149,6 +155,8 @@ class DonutPackaging extends Actor {
         }
     }
     create(group) {
+        this.win = this.game.add.audio("win", 0.8);
+        this.lose = this.game.add.audio("lose", 1);
         this.casesInUse = this.game.add.group(group);
         this.casesPool = this.game.add.group(group);
         this.wasted = this.game.add.group(group);
@@ -288,7 +296,7 @@ class WorkerHands extends Actor {
             donut.y = 0;
             let x = this.getNextCasePos().x;
             let y = this.getNextCasePos().y;
-            let time = Math.max((y - this.onesHand.y) / (Config.HANDS_SPEED * 1.4), 100);
+            let time = Math.max((y - this.onesHand.y) / (Config.HANDS_SPEED * 1.2), 100);
             this.game.add.tween(this.onesHand).to({ x: x, y: y }, time, null, true).onComplete.add(() => {
                 this.donutPackaging.packOne(donut);
                 this.moveOne();
