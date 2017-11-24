@@ -45,14 +45,16 @@ class DecimalDonuts {
     preload() {
         this.game = window["game"]
         this.game.load.atlasJSONHash("donuts", "assets/donuts.png", "assets/donuts.json")
-        this.actors.map(actor => actor.preload(this.game))
+        this.game.load.bitmapFont("numbers_50", "assets/fonts/varela_50.png", "assets/fonts/varela_50.fnt")
+        this.game.load.bitmapFont("numbers_100", "assets/fonts/varela_100.png", "assets/fonts/varela_100.fnt")
+        this.game.load.bitmapFont("numbers_200", "assets/fonts/varela_200.png", "assets/fonts/varela_200.fnt")
+        this.actors.map(actor => actor.preload(this.game, this.core))
     }
 
     create(gameGroup: Phaser.Group) {
 
         this.gameGroup = gameGroup
         this.gameGroup.x += Config.EDGE_PADDING
-        this.gameGroup.y += Config.EDGE_PADDING
 
         this.actors.map(actor => actor.create(gameGroup))
 
@@ -75,16 +77,17 @@ class DecimalDonuts {
         this.actors.map(actor => actor.restart())
     }
 
-    roundOver(score: number) {
-        this.core.incrScore(score)
+    roundOver() {
         this.restart()
     }
 }
 
 class Actor {
     protected game: Phaser.Game
-    preload(game: Phaser.Game) {
+    protected core: GenericGame
+    preload(game: Phaser.Game, core: GenericGame) {
         this.game = game
+        this.core = core
     }
     create(group: Phaser.Group) { }
     update() { }
@@ -95,7 +98,6 @@ class Actor {
 
 class DonutPackaging extends Actor {
 
-    game: Phaser.Game
 
     casesInUse: Phaser.Group
     casesPool: Phaser.Group
@@ -110,28 +112,54 @@ class DonutPackaging extends Actor {
     previewCase?: number
     casedFilled?: number
 
+    packedDonuts: Phaser.Sprite[] = []
     packedCount: number
     casesCount = 100
 
     checkPackaging() {
         if (this.packedCount == this.selectedCase + 1) {
-            this.endRound(Config.SCORE_PER_ROUND)
+            this.core.incrScore(Config.SCORE_PER_ROUND)
+            this.packedDonuts.forEach( (donut, index) => {
+                donut.angle = 0
+                let tween = this.game.add.tween(donut).to({angle: -60}, Config.CASES_DROP_TIME, Phaser.Easing.Bounce.Out, true, 0, 1, true)
+                if (index + 1 == this.packedCount) {
+                    tween.onComplete.add(() => {
+                        this.endRound()
+                    })
+                }
+            })
+            
         } else {
             if (this.packedCount < this.selectedCase + 1) {
                 for (let i = this.packedCount; i <= this.selectedCase; i++) {
                     this.wasted.add(this.cases[i], true)
                 }
             }
+
+            this.packedDonuts.forEach( (donut, index) => {
+                donut.angle = 140
+                let tween = this.game.add.tween(donut).to({angle: 160}, Config.CASES_DROP_TIME/2, Phaser.Easing.Linear.None, true, 0, 1, true)
+                if (index + 1 == this.packedCount) {
+                    tween.onComplete.add(() => {
+                        this.endRound()
+                    })
+                }
+            })
+
             this.game.add.tween(this.wasted).to({ y: Config.CASES_OUT_RANGE }, Config.CASES_DROP_TIME, Phaser.Easing.Exponential.In, true).onComplete.add(() => {
-                this.endRound(0)
+                // this.endRound()
             })
         }
     }
 
-    endRound(score: number) {
+    success() {
+
+    }
+
+    endRound() {
         this.game.add.tween(this.casesInUse).to({ x: Config.CASES_OUT_RANGE }, Config.CASES_IN_OUT_TIME, Phaser.Easing.Exponential.In, true)
             .onComplete.add(() => {
-                this.roundOver.dispatch(score)
+                this.roundOver.dispatch()
             })
     }
 
@@ -157,18 +185,18 @@ class DonutPackaging extends Actor {
             this.cases[this.packedCount + index].add(donut)
             donut.x = 0
             donut.y = 0
+            this.packedDonuts[this.packedCount + index] = donut
         }
     }
 
     create(group: Phaser.Group) {
-        this.game = window["game"]
-
+        
         this.casesInUse = this.game.add.group(group)
         this.casesPool = this.game.add.group(group)
         this.wasted = this.game.add.group(group)
         this.casesPool.visible = false
 
-        let donutScale = Config.DONUT_CASE  / this.game.cache.getFrameByName("donuts", "br1").width
+        let donutScale = Config.DONUT_CASE / this.game.cache.getFrameByName("donuts", "br1").width
 
         console.log("holder scale", donutScale)
 
@@ -224,7 +252,8 @@ class DonutPackaging extends Actor {
     }
 
     restart() {
-        this.wasted.y = 0 
+        this.wasted.y = 0
+        this.packedDonuts = []
         this.packedCount = 0
         this.casesInUse.x = - Config.CASES_OUT_RANGE
         this.previewCase = null
@@ -259,22 +288,24 @@ class WorkerHands extends Actor {
 
 
     create(group: Phaser.Group) {
+        let handStyle = "_" + window["params"]["hand"]
+        
         this.hands = this.game.add.group(group)
         this.onesHand = this.game.add.group(group)
-        
-        
+
+
         this.hands = this.game.add.group(group)
-        
-        let handScale = Config.DONUT_CASE * 5 / this.game.cache.getFrameByName("donuts", "right_hand").width;
+
+        let handScale = Config.DONUT_CASE * 5 / this.game.cache.getFrameByName("donuts", "right_hand" + handStyle).width;
         let handAlpha = 1
         let handYPos = Config.DONUT_CASE * 1.5
 
-        let leftHand = this.game.add.sprite(0, -handYPos, "donuts", "left_hand", this.hands);
+        let leftHand = this.game.add.sprite(0, -handYPos, "donuts", "left_hand" + handStyle, this.hands);
         leftHand.scale.setTo(handScale, handScale)
         leftHand.alpha = handAlpha
 
 
-        let rightHand = this.game.add.sprite(Config.DONUT_CASE * 5, -handYPos, "donuts", "right_hand", this.hands)
+        let rightHand = this.game.add.sprite(Config.DONUT_CASE * 5, -handYPos, "donuts", "right_hand" + handStyle, this.hands)
         rightHand.scale.setTo(handScale, handScale)
         rightHand.alpha = handAlpha
 
@@ -286,7 +317,7 @@ class WorkerHands extends Actor {
 
         this.hands.visible = false
         this.onesHand.visible = false
-        
+
     }
 
     startMoving() {
@@ -334,7 +365,7 @@ class WorkerHands extends Actor {
 
             let x = this.getNextCasePos().x
             let y = this.getNextCasePos().y
-            let time = (y - this.onesHand.y) / Config.HANDS_SPEED
+            let time = Math.max((y - this.onesHand.y) / (Config.HANDS_SPEED * 1.4), 100)
 
             this.game.add.tween(this.onesHand).to({ x: x, y: y }, time, null, true).onComplete.add(() => {
                 this.donutPackaging.packOne(donut)
@@ -377,7 +408,7 @@ class DonutFactory extends Actor {
         let body: Phaser.Physics.Arcade.Body = border.body
         body.immovable = true
         border.body.setSize(window["ppu"] * width, window["ppu"] * height)
-        
+
     }
 
     private createBorders() {
@@ -397,14 +428,8 @@ class DonutFactory extends Actor {
     prepare(donut: Phaser.Sprite) {
         donut.body.velocity.setTo(0, 0)
         donut.body.angularVelocity = 0
-        donut.body.angle = 0
-        donut.angle = 0
     }
 
-    preload(game: Phaser.Game) {
-        super.preload(game)
-        this.game.load.bitmapFont("numbers_240", "assets/fonts/KaoriGel_240.png", "assets/fonts/KaoriGel_240.fnt")
-    }
 
     create(group: Phaser.Group) {
         this.donutBorder = this.game.add.group(group)
@@ -412,7 +437,7 @@ class DonutFactory extends Actor {
         this.donutsPool = this.game.add.group(group)
         this.donutsPool.visible = false
 
-        this.donutsNumber = this.game.add.bitmapText(Config.DONUT_CASE * 5, Config.DONUTS_SPAN_HEIGHT / 2, "numbers_240", "", 240, group)
+        this.donutsNumber = this.game.add.bitmapText(Config.DONUT_CASE * 5, Config.DONUTS_SPAN_HEIGHT / 2, "numbers_200", "", 200, group)
         this.donutsNumber.anchor.setTo(0.5, 0.3)
 
         this.createBorders()
@@ -422,8 +447,8 @@ class DonutFactory extends Actor {
         console.log("donut scale", donutScale)
         let bounce = new Phaser.Point(1, 1)
         let donutBodySize = donutTextureSize
-        
-        let y = (1 - window["ppu"]) * donutTextureSize/2
+
+        let y = (1 - window["ppu"]) * donutTextureSize / 2
         let bodySize = new Phaser.Point(window["ppu"] * donutBodySize, y)
 
         for (let i = 0; i < 100; i++) {
@@ -435,7 +460,7 @@ class DonutFactory extends Actor {
             body.setSize(bodySize.x, bodySize.x, bodySize.y, bodySize.y)
 
         }
-        
+
     }
 
     restart() {
@@ -458,7 +483,7 @@ class DonutFactory extends Actor {
             donut.y = this.game.rnd.realInRange(Config.DONUT_CASE, Config.DONUTS_SPAN_HEIGHT - Config.DONUT_CASE)
             this.game.physics.enable(this.donuts[i], Phaser.Physics.ARCADE)
             let body: Phaser.Physics.Arcade.Body = donut.body
-            body.angularVelocity = 100
+            body.angularVelocity = this.game.rnd.integerInRange(-Config.DONUT_MAX_SPEED, Config.DONUT_MAX_SPEED)
             let angle = Phaser.Math.degToRad(this.game.rnd.angle())
             let speed = this.game.rnd.realInRange(Config.DONUT_MIN_SPEED, Config.DONUT_MAX_SPEED)
             body.velocity.setTo(speed * Math.cos(angle), speed * Math.sin(angle))
@@ -473,7 +498,7 @@ class DonutFactory extends Actor {
         this.game.physics.arcade.collide(this.donutsInUse, this.donutBorder)
     }
 
-    render() { 
+    render() {
         if (this.game.config.enableDebug) {
             this.donuts.forEach(donut => {
                 this.game.debug.body(donut)
@@ -492,29 +517,11 @@ class DonutFactory extends Actor {
             return layer
         }
 
-        
+
         let dnBuns = ["dn1", "dn2", "dn3", "dn4"]
-        let dnCreams = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_cream")
-        let dnEyes = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_eyes")
-        let dnHands = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_hands")
-        let dnTop = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_top")
-        let dnToppings = ["dn1", "dn2", "dn4", "dn4"].map( e => e + "_toppings")
-
-
-        let bases = ["donut_1", "donut_1", "donut_2", "donut_3"]
-        let glazings = ["glazing_1", "glazing_2", "glazing_3", "glazing_4", "glazing_5", "glazing_6",
-            "glazing_zigzag_1", "glazing_zigzag_2", "glazing_zigzag_3", "glazing_zigzag_4"]
-        let sprinkles = ["sprinkles_1", "sprinkles_2", "sprinkles_3", "sprinkles_4", "sprinkles_5",
-            "stripes_1", "stripes_2", "stripes_3"]
 
         let baseDonut: Phaser.Sprite = stringToSprite("base")
         baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnBuns)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnCreams)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnEyes)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnHands)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnTop)))
-        // baseDonut.addChild(stringToSprite(this.game.rnd.pick(dnToppings)))
 
         return baseDonut
     }
@@ -530,18 +537,22 @@ class GenericGame {
     static HEIGHT = 1460
     static WIDTH = 1000
     static HUD_HEIGHT = 100
+    static PADDING = 10
+    static STAR_SIZE = 80
 
     game: Phaser.Game
 
     decimalDonuts: DecimalDonuts
     elapsed: number
+    maxScore = 100
     score = 0
     backgroundColor: string
 
     timer: Phaser.BitmapText
     title: Phaser.BitmapText
+    stars: Phaser.Sprite[] = []
 
-
+    scoreMask: Phaser.Graphics
 
     constructor(width: number, height: number, backGroundColor: string) {
         this.game = new Phaser.Game({
@@ -566,13 +577,36 @@ class GenericGame {
     }
 
     create() {
-        
+
         this.game.stage.backgroundColor = this.backgroundColor
         this.game.time.advancedTiming = true
 
-        let gameGroup = ScaledGroup.create(this.game, GenericGame.WIDTH, GenericGame.HEIGHT)
+        let root = ScaledGroup.create(this.game, GenericGame.WIDTH, GenericGame.HEIGHT)
+        this.timer = this.game.add.bitmapText(GenericGame.PADDING, GenericGame.HUD_HEIGHT/2, "numbers_50", "2:30", 50, root)
+        this.timer.anchor.setTo(0, 0.3)
+
+
+        this.title = this.game.add.bitmapText(GenericGame.WIDTH - GenericGame.PADDING - GenericGame.STAR_SIZE * 3.5, GenericGame.HUD_HEIGHT/2, "numbers_100", "Decimal Donuts", 70, root)
+        this.title.anchor.setTo(1, 0.5)
+        let gameGroup = this.game.add.group(root)
         gameGroup.y += GenericGame.HUD_HEIGHT
         this.decimalDonuts.create(gameGroup)
+
+        this.scoreMask = this.game.add.graphics(0, 0, root)
+        
+        let starScale = GenericGame.STAR_SIZE / this.game.cache.getFrameByName("donuts","starGold").height
+        for (let i = 0; i < 3; i++) {
+            
+            this.stars[i] = this.game.add.sprite(GenericGame.WIDTH - GenericGame.PADDING - GenericGame.STAR_SIZE * (3 - i), GenericGame.PADDING, "donuts", "starEmpty", root)
+            this.stars[i].scale.setTo(starScale, starScale)
+            
+            let gold = this.game.add.sprite(0, 0, "donuts", "starGold", root)
+            gold.mask = this.scoreMask
+            
+            this.stars[i].addChild(gold)
+        }
+
+        this.incrScore(0)
     }
 
     update() {
@@ -587,6 +621,13 @@ class GenericGame {
     incrScore(scoreToAdd: number) {
         this.score += scoreToAdd
         console.log(this.score)
+
+        let scoreRatio = this.score / this.maxScore 
+
+        this.scoreMask.clear()
+        this.scoreMask.beginFill(0xFFFFFF, 1)
+        this.scoreMask.drawRect(GenericGame.WIDTH - GenericGame.PADDING - GenericGame.STAR_SIZE*3, 0, GenericGame.STAR_SIZE * 3 * scoreRatio, GenericGame.HUD_HEIGHT)
+        this.scoreMask.endFill()
     }
 }
 
@@ -607,7 +648,7 @@ class ScaledGroup {
         group.scale.setTo(ppu, ppu)
 
 
-        if (game.config.enableDebug ) {
+        if (game.config.enableDebug) {
             let graphics = game.add.graphics(0, 0, group)
             for (let i = 0; i <= width; i += 10) {
                 let lineWidth = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0)
@@ -628,6 +669,14 @@ class ScaledGroup {
 }
 
 window.onload = () => {
+
+    var url_string = window.location.href
+    var url = new URL(url_string);
+    
+    var params = {}
+    params["hand"] = url.searchParams.get("hand") || "skin"
+    
+    window["params"] = params
     var game = new GenericGame(window.innerWidth, window.innerHeight, "#FFF49B")
 }
 
