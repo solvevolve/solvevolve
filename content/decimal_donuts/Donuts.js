@@ -1,10 +1,10 @@
 /// <reference path="../../typescript/phaser.comments.d.ts" />
 class Config {
 }
-Config.DONUTS_SPAN_HEIGHT = 350;
-Config.EDGE_PADDING = 20;
-Config.DONUT_SIZE = 64;
-Config.CASE_PADDING = 32;
+Config.DONUTS_SPAN_HEIGHT = 400;
+Config.EDGE_PADDING = 0;
+Config.DONUT_SIZE = 60;
+Config.CASE_PADDING = 30;
 Config.DONUT_CASE = Config.DONUT_SIZE + Config.CASE_PADDING;
 Config.DONUT_MIN_SPEED = 50;
 Config.DONUT_MAX_SPEED = 130;
@@ -40,7 +40,6 @@ class DecimalDonuts {
         this.gameGroup = gameGroup;
         this.gameGroup.x += Config.EDGE_PADDING;
         this.actors.map(actor => actor.create(gameGroup));
-        this.restart();
     }
     update() {
         this.actors.map(actor => actor.update());
@@ -49,15 +48,23 @@ class DecimalDonuts {
         this.actors.map(actor => actor.render());
     }
     levelOver() {
+        this.roundCompleted = 0;
         this.restart();
     }
     restart() {
         this.actors.map(actor => actor.restart());
     }
     roundOver() {
-        this.restart();
+        this.roundCompleted++;
+        if (this.roundCompleted == DecimalDonuts.ROUNDS) {
+            this.core.positionInPop();
+        }
+        else {
+            this.restart();
+        }
     }
 }
+DecimalDonuts.ROUNDS = 3;
 class Actor {
     preload(game, core) {
         this.game = game;
@@ -183,6 +190,7 @@ class DonutPackaging extends Actor {
             for (let i = caseIndex + 1; i < this.cases.length; i++) {
                 this.casesPool.add(this.cases[i]);
             }
+            this.core.setTicking(false);
             this.startPacking.dispatch();
         }
     }
@@ -204,7 +212,9 @@ class DonutPackaging extends Actor {
             this.cases[i].y = Config.DONUTS_SPAN_HEIGHT + Math.floor(i / 10) * Config.DONUT_CASE + Config.DONUT_CASE / 2;
         }
         this.redraw(100, 1);
-        this.game.add.tween(this.casesInUse).to({ x: 0 }, Config.CASES_IN_OUT_TIME, Phaser.Easing.Exponential.Out, true);
+        this.game.add.tween(this.casesInUse).to({ x: 0 }, Config.CASES_IN_OUT_TIME, Phaser.Easing.Exponential.Out, true).onComplete.add(() => {
+            this.core.setTicking(true);
+        });
     }
 }
 class WorkerHands extends Actor {
@@ -215,22 +225,21 @@ class WorkerHands extends Actor {
         this.donutPackaging.startPacking.add(this.startMoving, this);
     }
     create(group) {
-        let handStyle = "_" + window["params"]["hand"];
         this.hands = this.game.add.group(group);
         this.onesHand = this.game.add.group(group);
         this.hands = this.game.add.group(group);
-        let handScale = Config.DONUT_CASE * 5 / this.game.cache.getFrameByName("donuts", "right_hand" + handStyle).width;
+        let handScale = Config.DONUT_CASE * 5 / this.game.cache.getFrameByName("donuts", "right_hand_glove").width;
         let handAlpha = 1;
         let handYPos = Config.DONUT_CASE * 1.5;
-        let leftHand = this.game.add.sprite(0, -handYPos, "donuts", "left_hand" + handStyle, this.hands);
+        let leftHand = this.game.add.sprite(0, -handYPos, "donuts", "left_hand_glove", this.hands);
         leftHand.scale.setTo(handScale, handScale);
         leftHand.alpha = handAlpha;
-        let rightHand = this.game.add.sprite(Config.DONUT_CASE * 5, -handYPos, "donuts", "right_hand" + handStyle, this.hands);
+        let rightHand = this.game.add.sprite(Config.DONUT_CASE * 5, -handYPos, "donuts", "right_hand_glove", this.hands);
         rightHand.scale.setTo(handScale, handScale);
         rightHand.alpha = handAlpha;
         this.onesHand = this.game.add.group(group);
-        let indexFiger = this.game.add.sprite(0, 0, "donuts", "right_hand_one", this.onesHand);
-        indexFiger.anchor.setTo(0.3, 0.1);
+        let indexFiger = this.game.add.sprite(0, 0, "donuts", "one_hand_glove", this.onesHand);
+        indexFiger.anchor.setTo(0.358, 0.05);
         indexFiger.scale.setTo(handScale, handScale);
         indexFiger.alpha = handAlpha;
         this.hands.visible = false;
@@ -409,7 +418,7 @@ class GenericGame {
             width: width,
             height: height,
             parent: "content",
-            enableDebug: false,
+            enableDebug: window["params"]["debug"],
             state: {
                 preload: () => this.preload(),
                 create: () => this.create(),
@@ -427,31 +436,88 @@ class GenericGame {
     create() {
         this.game.stage.backgroundColor = this.backgroundColor;
         this.game.time.advancedTiming = true;
-        let root = ScaledGroup.create(this.game, GenericGame.WIDTH, GenericGame.HEIGHT);
-        this.timer = this.game.add.bitmapText(GenericGame.PADDING, GenericGame.HUD_HEIGHT / 2, "numbers_50", "2:30", 50, root);
-        this.timer.anchor.setTo(0, 0.3);
-        this.title = this.game.add.bitmapText(GenericGame.WIDTH - GenericGame.PADDING - GenericGame.STAR_SIZE * 3.5, GenericGame.HUD_HEIGHT / 2, "numbers_100", "Decimal Donuts", 70, root);
-        this.title.anchor.setTo(1, 0.5);
-        let gameGroup = this.game.add.group(root);
-        gameGroup.y += GenericGame.HUD_HEIGHT;
-        this.decimalDonuts.create(gameGroup);
-        this.scoreMask = this.game.add.graphics(0, 0, root);
+        this.root = ScaledGroup.create(this.game, GenericGame.WIDTH, GenericGame.HEIGHT);
+        this.timer = this.game.add.bitmapText(0, 0, "numbers_50", "0:00", 50, this.root);
+        this.title = this.game.add.bitmapText(0, 0, "numbers_100", "Decimal Donuts", 60, this.root);
         let starScale = GenericGame.STAR_SIZE / this.game.cache.getFrameByName("donuts", "starGold").height;
+        this.starGroup = this.game.add.group(this.root);
+        this.scoreMask = this.game.add.graphics(0, 0, this.starGroup);
         for (let i = 0; i < 3; i++) {
-            this.stars[i] = this.game.add.sprite(GenericGame.WIDTH - GenericGame.PADDING - GenericGame.STAR_SIZE * (3 - i), GenericGame.PADDING, "donuts", "starEmpty", root);
+            this.stars[i] = this.game.add.sprite(i * GenericGame.STAR_SIZE, 0, "donuts", "starEmpty", this.starGroup);
+            this.stars[i].anchor.setTo(0, 0.5);
             this.stars[i].scale.setTo(starScale, starScale);
-            let gold = this.game.add.sprite(0, 0, "donuts", "starGold", root);
+            let gold = this.game.add.sprite(0, 0, "donuts", "starGold", this.starGroup);
+            gold.anchor.setTo(0, 0.5);
             gold.mask = this.scoreMask;
             this.stars[i].addChild(gold);
         }
-        this.incrScore(0);
+        let gameGroup = this.game.add.group(this.root);
+        gameGroup.y += GenericGame.HUD_HEIGHT;
+        this.decimalDonuts.create(gameGroup);
+        this.levelOver();
+        this.popup = this.game.add.group(this.root);
+        this.popup.y = GenericGame.HUD_HEIGHT * 2.5;
+        let popupImg = this.game.add.sprite(0, 0, "donuts", "popup", this.popup);
+        popupImg.scale.setTo(2, 2.3);
+        this.positionInHud();
+        if (this.game.config.enableDebug) {
+            this.fpsLabel = this.game.add.bitmapText(GenericGame.WIDTH / 2, GenericGame.HEIGHT * 0.9, "numbers_100", "FPS:", 100, this.root);
+            this.fpsLabel.anchor.setTo(0.5, 1);
+            this.game.time.advancedTiming = true;
+        }
+        this.replay = this.game.add.sprite(GenericGame.WIDTH / 2, GenericGame.HUD_HEIGHT * 2.5, "donuts", "replay", this.popup);
+        this.replay.anchor.setTo(0.5, 0.5);
+        this.replay.inputEnabled = true;
+        this.replay.events.onInputUp.add(() => {
+            this.positionInHud();
+            this.levelOver();
+        });
+    }
+    positionInHud() {
+        this.popup.visible = false;
+        this.root.addChild(this.timer);
+        this.timer.position.set(GenericGame.PADDING, GenericGame.HUD_HEIGHT / 2);
+        this.timer.anchor.setTo(0, 0.3);
+        this.root.addChild(this.title);
+        this.title.position.set(GenericGame.WIDTH / 2, GenericGame.HUD_HEIGHT / 2);
+        this.title.anchor.setTo(0.5, 0.45);
+        this.root.addChild(this.starGroup);
+        this.starGroup.x = GenericGame.WIDTH - GenericGame.STAR_SIZE * 3;
+        this.starGroup.y = GenericGame.HUD_HEIGHT / 2;
+    }
+    positionInPop() {
+        this.popup.visible = true;
+        this.popup.addChild(this.timer);
+        this.timer.position.set(GenericGame.WIDTH / 2, GenericGame.HUD_HEIGHT * 2);
+        this.timer.anchor.setTo(0.5, 0.5);
+        this.popup.addChild(this.title);
+        this.title.position.set(GenericGame.WIDTH / 2, GenericGame.HUD_HEIGHT);
+        this.title.anchor.setTo(0.5, 1);
+        this.popup.addChild(this.starGroup);
+        this.starGroup.x = GenericGame.WIDTH / 2 - GenericGame.STAR_SIZE * 1.5;
+        this.starGroup.y = GenericGame.HUD_HEIGHT * 1.25;
     }
     update() {
         this.decimalDonuts.update();
-        this.elapsed += this.game.time.elapsedMS;
+        if (this.keepTicking) {
+            this.elapsed += this.game.time.elapsedMS;
+            if (this.elapsed > (this.timeInSeconds + 1) * 1000) {
+                this.timeInSeconds = Math.floor(this.elapsed / 1000);
+                this.updateTimerText();
+            }
+        }
+    }
+    updateTimerText() {
+        let minutes = Math.floor(this.timeInSeconds / 60);
+        let seconds = this.timeInSeconds % 60;
+        let secondsText = seconds < 10 ? "0" + seconds : seconds;
+        this.timer.text = minutes + ":" + secondsText;
     }
     render() {
         this.decimalDonuts.render();
+        if (this.game.config.enableDebug) {
+            this.fpsLabel.text = "FPS:" + this.game.time.fps;
+        }
     }
     incrScore(scoreToAdd) {
         this.score += scoreToAdd;
@@ -459,15 +525,28 @@ class GenericGame {
         let scoreRatio = this.score / this.maxScore;
         this.scoreMask.clear();
         this.scoreMask.beginFill(0xFFFFFF, 1);
-        this.scoreMask.drawRect(GenericGame.WIDTH - GenericGame.PADDING - GenericGame.STAR_SIZE * 3, 0, GenericGame.STAR_SIZE * 3 * scoreRatio, GenericGame.HUD_HEIGHT);
+        this.scoreMask.drawRect(0, -GenericGame.STAR_SIZE / 2, 3 * GenericGame.STAR_SIZE * scoreRatio, GenericGame.HUD_HEIGHT);
         this.scoreMask.endFill();
     }
+    setTicking(ticking) {
+        this.keepTicking = ticking;
+    }
+    levelOver() {
+        console.log("level over");
+        this.score = 0;
+        this.incrScore(0);
+        this.elapsed = 0;
+        this.timeInSeconds = 0;
+        this.keepTicking = false;
+        this.updateTimerText();
+        this.decimalDonuts.levelOver();
+    }
 }
-GenericGame.HEIGHT = 1460;
-GenericGame.WIDTH = 1000;
-GenericGame.HUD_HEIGHT = 100;
-GenericGame.PADDING = 10;
-GenericGame.STAR_SIZE = 80;
+GenericGame.HEIGHT = 1500;
+GenericGame.WIDTH = 900;
+GenericGame.HUD_HEIGHT = 150;
+GenericGame.PADDING = 20;
+GenericGame.STAR_SIZE = 60;
 class ScaledGroup {
     static create(game, width, height) {
         let ppux = game.width / width;
@@ -480,7 +559,7 @@ class ScaledGroup {
         group.x = ppux > ppu ? game.width / 2 - ppu * width / 2 : 0;
         group.y = ppuy > ppu ? game.height / 2 - ppu * height / 2 : 0;
         group.scale.setTo(ppu, ppu);
-        if (game.config.enableDebug) {
+        if (game.config.enableDebug || window["params"]["grid"]) {
             let graphics = game.add.graphics(0, 0, group);
             for (let i = 0; i <= width; i += 10) {
                 let lineWidth = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0);
@@ -499,12 +578,20 @@ class ScaledGroup {
     }
 }
 window.onload = () => {
-    var url_string = window.location.href;
-    var url = new URL(url_string);
-    var params = {};
-    params["hand"] = url.searchParams.get("hand") || "skin";
+    let url = new URL(window.location.href);
+    let params = {};
+    params["debug"] = url.searchParams.get("debug") === "true";
+    params["grid"] = url.searchParams.get("grid") === "true";
     window["params"] = params;
-    var game = new GenericGame(window.innerWidth, window.innerHeight, "#FFF49B");
+    let backGround = "#FFF498";
+    let game;
+    if (!detectMobile()) {
+        // document.querySelector("#tapMsg").remove()
+        game = new GenericGame(window.innerWidth, window.innerHeight, backGround);
+    }
+    else {
+        game = new GenericGame(window.innerWidth, window.innerHeight, backGround);
+    }
 };
 function detectMobile() {
     let ua = navigator.userAgent;
