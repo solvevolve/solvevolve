@@ -64,7 +64,7 @@ class DecimalDonuts {
         this.gameGroup.x += Config.EDGE_PADDING
 
         let loop = this.game.add.audio("loop", 1, true)
-        loop.loopFull(0.4)
+        loop.loopFull(0.25)
 
         
 
