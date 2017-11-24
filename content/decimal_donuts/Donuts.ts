@@ -139,7 +139,7 @@ class DonutPackaging extends Actor {
             this.packedDonuts.forEach( (donut, index) => {
                 donut.angle = 140
                 let tween = this.game.add.tween(donut).to({angle: 160}, Config.CASES_DROP_TIME/2, Phaser.Easing.Linear.None, true, 0, 1, true)
-                if (index + 1 == this.packedCount) {
+                if (index + 1 == this.packedDonuts.length) {
                     tween.onComplete.add(() => {
                         this.endRound()
                     })
