@@ -19,31 +19,39 @@ class Crow {
         rock1.hitArea = new Phaser.Rectangle(-175, -300, 350, 700);
         rock2.hitArea = new Phaser.Rectangle(-175, -300, 350, 700);
         this.pot = this.placeImage("pot", width / 2, height - 500, 400, 400);
-        //let potFilled: Phaser.Sprite = this.placeImage("pot_filled", width / 2, height - 500, 400, 400).getAt(0) as Phaser.Sprite
+        let potWaterSprite = this.placeImage("pot_filled", width / 2, height - 500, 400, 400);
+        let potRocksSprite = this.placeImage("pot_rocks", width / 2, height - 500, 400, 400);
+        this.rocksNeededText = this.game.add.bitmapText(width / 2, height - 450, "numbers_200", "", 150, group);
+        this.rocksNeededText.anchor.setTo(0.5, 0.5);
+        this.potRocks = this.game.add.graphics(0, height, group);
+        this.potWater = this.game.add.graphics(0, height, group);
+        potWaterSprite.mask = this.potWater;
+        potRocksSprite.mask = this.potRocks;
         this.positionOneRocks();
         this.positionTenRocks();
-        let potHolder = this.placeImage("pot_holder", width / 2, height - 200, width * 0.8, 300);
+        let potHolder = this.placeImage("pot_holder", width / 2, height - 190, width * 0.8, 300);
         let crowGroup = this.game.add.group(group);
+        crowGroup.position.set(width / 2, height / 2 - 300);
         this.crow = this.game.add.sprite(0, 0, "crow", null, crowGroup);
         this.crow.anchor.setTo(0.5, 1);
-        console.log(group.position, crowGroup.position);
         this.oneRock = this.placeImage("one_rock", 0, 0, 60, 60);
         this.oneRock.visible = false;
         this.tenRock = this.placeImage("ten_rock", 0, 0, 135, 100);
         this.tenRock.visible = false;
         this.crow.animations.add("fly", null);
         this.crow.animations.play("fly", 10, true);
-        this.enableInteractionForRock(rock1, crowGroup, this.oneRock);
-        this.enableInteractionForRock(rock2, crowGroup, this.tenRock);
+        this.enableInteractionForRock(rock1, crowGroup, this.oneRock, 1);
+        this.enableInteractionForRock(rock2, crowGroup, this.tenRock, 10);
+        this.restart();
     }
-    enableInteractionForRock(rock, crowGroup, baseRock) {
+    enableInteractionForRock(rock, crowGroup, baseRock, rockVal) {
         rock.inputEnabled = true;
         rock.events.onInputUp.add(() => {
             if (this.animating)
                 return;
-            console.log("tens");
+            this.animating = true;
+            this.core.setTicking(false);
             this.game.add.tween(crowGroup).to({ x: rock.x, y: rock.y - 100 }, 500, null, true).onComplete.add(() => {
-                this.animating = true;
                 this.crow.animations.stop("fly", true);
                 this.crow.animations.play("fly", 30, true);
                 crowGroup.addChild(baseRock);
@@ -55,10 +63,43 @@ class Crow {
                     this.game.add.tween(baseRock).to({ y: 80 }, 300, null, true).onComplete.add(() => {
                         baseRock.y = 0;
                         baseRock.visible = false;
+                        this.incrRocksVolume(rockVal);
                     });
                 });
             });
         });
+    }
+    incrRocksVolume(value) {
+        this.rocksVol += value;
+        let fullSize = 278;
+        let waterHeight = fullSize * (100 - this.rocksVolNeeded) / 100;
+        this.potWater.clear();
+        this.potRocks.clear();
+        let rocksHeight = fullSize * (this.rocksVol) / 100;
+        this.potRocks.beginFill(0xFFFFFF, 1);
+        this.potRocks.drawRect(0, -325 - rocksHeight, 1000, rocksHeight);
+        this.potRocks.endFill();
+        this.potWater.beginFill(0xFFFFFF, 1);
+        this.potWater.drawRect(0, -325 - waterHeight - rocksHeight, 1000, waterHeight);
+        this.potWater.endFill();
+        this.rocksNeededText.text = String(this.rocksVolNeeded - this.rocksVol);
+        if (this.rocksVol == this.rocksVolNeeded) {
+            this.rocksNeededText.text = "";
+            this.potWater.beginFill(0xFFFFFF, 1);
+            this.potWater.drawRect(0, -325 - fullSize - 100, 1000, 100);
+            this.potWater.endFill();
+            this.core.incrScore(10);
+            window.setTimeout(() => {
+                this.restart();
+            }, 500);
+        }
+        else if (this.rocksVol > this.rocksVolNeeded) {
+            this.rocksNeededText.text = "";
+            window.setTimeout(() => {
+                this.restart();
+            }, 500);
+        }
+        this.core.setTicking(true);
     }
     positionOneRocks() {
         let rockSize = 60;
@@ -87,10 +128,20 @@ class Crow {
     render() {
     }
     levelOver() {
+        this.currentRound = 0;
+        this.restart();
     }
     restart() {
-        this.waterVol = this.game.rnd.integerInRange(1, 99);
-        this.rocksVol = 0;
+        this.currentRound++;
+        if (this.currentRound == 10) {
+            this.core.positionInPop();
+        }
+        else {
+            this.rocksVolNeeded = this.game.rnd.integerInRange(10, 90);
+            this.rocksVol = 0;
+            this.incrRocksVolume(0);
+            this.core.setTicking(true);
+        }
     }
     placeImage(name, x, y, width, height) {
         let size = this.game.cache.getFrameByName("main", name);
@@ -123,7 +174,7 @@ class CrowMainGame {
         this.backgroundColor = backGroundColor;
     }
     preload() {
-        this.game.load.bitmapFont("numbers_50", "assets/fonts/varela_50.png", "assets/fonts/varela_50.fnt");
+        this.game.load.bitmapFont("numbers_60", "assets/fonts/varela_60.png", "assets/fonts/varela_60.fnt");
         this.game.load.bitmapFont("numbers_100", "assets/fonts/varela_100.png", "assets/fonts/varela_100.fnt");
         this.game.load.bitmapFont("numbers_200", "assets/fonts/varela_200.png", "assets/fonts/varela_200.fnt");
         this.crow.preload();
@@ -132,8 +183,8 @@ class CrowMainGame {
         this.game.stage.backgroundColor = this.backgroundColor;
         this.game.time.advancedTiming = true;
         this.root = scaledWindow(this.game, CrowMainGame.WIDTH, CrowMainGame.HEIGHT);
-        this.timer = this.game.add.bitmapText(0, 0, "numbers_50", "0:00", 50, this.root);
-        this.title = this.game.add.bitmapText(0, 0, "numbers_100", "Thirsty Crow", 60, this.root);
+        this.timer = this.game.add.bitmapText(0, 0, "numbers_60", "0:00", 60, this.root);
+        this.title = this.game.add.bitmapText(0, 0, "numbers_60", "Thirsty Crow", 60, this.root);
         let starScale = CrowMainGame.STAR_SIZE / this.game.cache.getFrameByName("main", "starGold").height;
         this.starGroup = this.game.add.group(this.root);
         this.scoreMask = this.game.add.graphics(0, 0, this.starGroup);
@@ -216,7 +267,6 @@ class CrowMainGame {
     }
     incrScore(scoreToAdd) {
         this.score += scoreToAdd;
-        console.log(this.score);
         let scoreRatio = this.score / this.maxScore;
         this.scoreMask.clear();
         this.scoreMask.beginFill(0xFFFFFF, 1);
@@ -227,7 +277,6 @@ class CrowMainGame {
         this.keepTicking = ticking;
     }
     levelOver() {
-        console.log("level over");
         this.score = 0;
         this.incrScore(0);
         this.elapsed = 0;
@@ -241,7 +290,7 @@ CrowMainGame.HEIGHT = 1500;
 CrowMainGame.WIDTH = 900;
 CrowMainGame.HUD_HEIGHT = 150;
 CrowMainGame.PADDING = 20;
-CrowMainGame.STAR_SIZE = 60;
+CrowMainGame.STAR_SIZE = 70;
 function scaledWindow(game, width, height) {
     let ppux = game.width / width;
     let ppuy = game.height / height;
