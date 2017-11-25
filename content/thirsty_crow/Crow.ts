@@ -58,7 +58,7 @@ class Crow {
         
         console.log(group.position, crowGroup.position)
 
-        
+    
         this.oneRock = this.placeImage("one_rock", 0, 0, 60, 60)
         this.oneRock.visible = false
         this.tenRock = this.placeImage("ten_rock", 0, 0, 135, 100)
