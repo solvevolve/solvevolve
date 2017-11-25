@@ -76,13 +76,6 @@ class Crow {
         this.potWater.clear();
         this.potRocks.clear();
         let rocksHeight = fullSize * (this.rocksVol) / 100;
-        this.potRocks.beginFill(0xFFFFFF, 1);
-        this.potRocks.drawRect(0, -325 - rocksHeight, 1000, rocksHeight);
-        this.potRocks.endFill();
-        this.potWater.beginFill(0xFFFFFF, 1);
-        this.potWater.drawRect(0, -325 - waterHeight - rocksHeight, 1000, waterHeight);
-        this.potWater.endFill();
-        this.rocksNeededText.text = String(this.rocksVolNeeded - this.rocksVol);
         if (this.rocksVol == this.rocksVolNeeded) {
             this.rocksNeededText.text = "";
             this.potWater.beginFill(0xFFFFFF, 1);
@@ -95,11 +88,22 @@ class Crow {
         }
         else if (this.rocksVol > this.rocksVolNeeded) {
             this.rocksNeededText.text = "";
+            rocksHeight = fullSize;
+            waterHeight = 0;
             window.setTimeout(() => {
                 this.restart();
             }, 500);
         }
+        else {
+            this.rocksNeededText.text = String(this.rocksVolNeeded - this.rocksVol);
+        }
         this.core.setTicking(true);
+        this.potRocks.beginFill(0xFFFFFF, 1);
+        this.potRocks.drawRect(0, -325 - rocksHeight, 1000, rocksHeight);
+        this.potRocks.endFill();
+        this.potWater.beginFill(0xFFFFFF, 1);
+        this.potWater.drawRect(0, -325 - waterHeight - rocksHeight, 1000, waterHeight);
+        this.potWater.endFill();
     }
     positionOneRocks() {
         let rockSize = 60;
