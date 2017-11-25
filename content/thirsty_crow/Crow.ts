@@ -3,10 +3,21 @@
 class Crow {
 
 
+    static CROW_EMPTY_SPEED = 1
 
     private core: CrowMainGame
     private game: Phaser.Game
     private group: Phaser.Group
+
+    private waterVol: number
+    private rocksVol: number
+
+    private pot: Phaser.Sprite
+    private crow: Phaser.Sprite
+    private oneRock: Phaser.Sprite
+    private tenRock: Phaser.Sprite
+
+    private animating: boolean = false
 
     constructor(core: CrowMainGame) {
         this.core = core
@@ -15,7 +26,7 @@ class Crow {
 
     preload() {
         this.game.load.atlasJSONHash("main", "assets/crow.png", "assets/crow.json")
-        this.game.load.spritesheet("crow", "assets/ss.png",983, 1289)
+        this.game.load.spritesheet("crow", "assets/crow_fly.png",Math.floor(983/4), Math.floor(1289/4))
         
     }
 
@@ -29,7 +40,11 @@ class Crow {
         let rock1 = this.placeImage("rock", 175, 600, 350, 200)
         let rock2 = this.placeImage("rock", 900 - 175, 600, 350, 200)
 
-        let pot = this.placeImage("pot", width / 2, height - 500, 400, 400)
+        rock1.hitArea = new Phaser.Rectangle(-175, -300, 350, 700)
+        rock2.hitArea = new Phaser.Rectangle(-175, -300, 350, 700)
+        
+        
+        this.pot = this.placeImage("pot", width / 2, height - 500, 400, 400)
         //let potFilled: Phaser.Sprite = this.placeImage("pot_filled", width / 2, height - 500, 400, 400).getAt(0) as Phaser.Sprite
 
         this.positionOneRocks()
@@ -37,12 +52,49 @@ class Crow {
 
         let potHolder = this.placeImage("pot_holder", width / 2, height - 200, width * 0.8, 300)
 
-        let crow = this.game.add.sprite(300, 300, "crow")
-        crow.scale.setTo(0.25, 0.25)
+        let crowGroup = this.game.add.group(group)
+        this.crow = this.game.add.sprite(0, 0, "crow", null, crowGroup)
+        this.crow.anchor.setTo(0.5, 1)
+        
+        console.log(group.position, crowGroup.position)
 
-        crow.animations.add("fly", null)
+        
+        this.oneRock = this.placeImage("one_rock", 0, 0, 60, 60)
+        this.oneRock.visible = false
+        this.tenRock = this.placeImage("ten_rock", 0, 0, 135, 100)
+        this.tenRock.visible = false
 
-        crow.animations.play("fly", 10,  true)
+
+        
+        this.crow.animations.add("fly", null)
+        this.crow.animations.play("fly", 10,  true)
+
+        this.enableInteractionForRock(rock1, crowGroup, this.oneRock)
+        this.enableInteractionForRock(rock2, crowGroup, this.tenRock)
+    }
+
+    enableInteractionForRock(rock: Phaser.Sprite, crowGroup: Phaser.Group, baseRock: Phaser.Sprite) {
+        rock.inputEnabled = true
+        rock.events.onInputUp.add(() => {
+            if (this.animating) return
+            console.log("tens")
+            this.game.add.tween(crowGroup).to({x: rock.x, y:rock.y - 100}, 500, null, true ).onComplete.add( () => {
+                this.animating = true
+                this.crow.animations.stop("fly", true)
+                this.crow.animations.play("fly", 30,  true)
+                crowGroup.addChild(baseRock)
+                baseRock.visible = true
+                this.game.add.tween(crowGroup).to({x: this.pot.x, y: this.pot.y - 200}, 1000, null, true).onComplete.add( () => {
+                    this.animating = false
+                    this.crow.animations.stop("fly")
+                    this.crow.animations.play("fly", 10,  true)
+                    this.game.add.tween(baseRock).to({ y: 80}, 300, null, true).onComplete.add( () => {
+                        baseRock.y = 0
+                        baseRock.visible = false
+                    })
+                })
+            })
+        })
     }
 
 
@@ -93,13 +145,17 @@ class Crow {
 
     }
 
+    restart() {
+        this.waterVol = this.game.rnd.integerInRange(1, 99)
+        this.rocksVol = 0
+    }
+
     placeImage(name: string, x: number, y: number, width: number, height: number) {
         let size = this.game.cache.getFrameByName("main", name)
-        let group = this.game.add.group(this.group)
-        let sprite = this.game.add.sprite(x, y, "main", name, group)
+        let sprite = this.game.add.sprite(x, y, "main", name, this.group)
         sprite.anchor.setTo(0.5, 0.5)
         sprite.scale.setTo(width / size.width, height / size.height)
-        return group
+        return sprite
     }
 }
 
@@ -321,14 +377,14 @@ function scaledWindow(game: Phaser.Game, width: number, height: number) {
     if (game.config.enableDebug || window["params"]["grid"]) {
         let graphics = game.add.graphics(0, 0, group)
         for (let i = 0; i <= width; i += 10) {
-            let lineWidth = 1 + (i % 50 == 0 ? 2 : 0) + (i % 100 == 0 ? 1 : 0)
-            graphics.lineStyle(lineWidth, 0x404040, 0.1)
+            let lineWidth = 1 + (i % 50 == 0 ? 1 : 0) + (i % 100 == 0 ? 2 : 0)
+            graphics.lineStyle(lineWidth, 0x404040, 0.3)
             graphics.moveTo(i, 0)
             graphics.lineTo(i, height)
         }
         for (let j = 0; j <= height; j += 10) {
-            let lineWidth = 1 + (j % 50 == 0 ? 2 : 0) + (j % 100 == 0 ? 1 : 0)
-            graphics.lineStyle(lineWidth, 0x404040, 0.1)
+            let lineWidth = 1 + (j % 50 == 0 ? 1 : 0) + (j % 100 == 0 ? 2 : 0)
+            graphics.lineStyle(lineWidth, 0x404040, 0.3)
             graphics.moveTo(0, j)
             graphics.lineTo(width, j)
         }
