@@ -11,10 +11,10 @@ class Crow {
         this.game.load.audio("correct", "assets/sound/correct.ogg", true);
         this.game.load.audio("wrong", "assets/sound/wrong.ogg", true);
         this.game.load.audio("congrats", "assets/sound/congratulations.ogg", true);
-        this.game.load.audio("loop", "assets/sound/Farm Frolics.ogg", true);
         this.game.load.audio("splash", "assets/sound/splash.wav", true);
         this.game.load.audio("wings", "assets/sound/wings.mp3", true);
         this.game.load.audio("wings_faster", "assets/sound/wings_faster.ogg", true);
+        this.game.load.audio("drink", "assets/sound/drink.ogg", true);
     }
     create(group) {
         this.correct = this.game.add.audio("correct");
@@ -25,6 +25,7 @@ class Crow {
         this.splash.volume = 0.2;
         this.congrats = this.game.add.audio("congrats");
         this.congrats.volume = 0.2;
+        this.drink = this.game.add.audio("drink");
         let loop = this.game.add.audio("loop");
         loop.volume = 0.1;
         // loop.play()
@@ -112,7 +113,9 @@ class Crow {
         this.potRocks.clear();
         let rocksHeight = fullSize * (this.rocksVol) / 100;
         if (this.rocksVol == this.rocksVolNeeded) {
-            this.correct.play();
+            this.correct.play().onStop.add(() => {
+                this.drink.play();
+            });
             this.rocksNeededText.text = "";
             this.potWater.beginFill(0xFFFFFF, 1);
             this.potWater.drawRect(0, -325 - fullSize - 100, 1000, 100);
