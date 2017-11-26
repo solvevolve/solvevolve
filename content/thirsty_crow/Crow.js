@@ -15,6 +15,7 @@ class Crow {
         this.game.load.audio("wings", "assets/sound/wings.mp3", true);
         this.game.load.audio("wings_faster", "assets/sound/wings_faster.ogg", true);
         this.game.load.audio("drink", "assets/sound/drink.ogg", true);
+        this.game.load.audio("breaking", "assets/sound/breaking.ogg", true);
     }
     create(group) {
         this.correct = this.game.add.audio("correct");
@@ -129,7 +130,9 @@ class Crow {
             });
         }
         else if (this.rocksVol > this.rocksVolNeeded) {
-            this.wrong.play();
+            this.game.add.audio("breaking").play().onStop.add(() => {
+                this.wrong.play();
+            });
             this.rocksNeededText.text = "";
             rocksHeight = fullSize;
             waterHeight = 0;
