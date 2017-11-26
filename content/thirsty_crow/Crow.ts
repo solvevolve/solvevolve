@@ -52,6 +52,7 @@ class Crow {
         
         this.correct = this.game.add.audio("correct", 0.6)
         this.wrong = this.game.add.audio("wrong", 0.6)
+        
         this.congrats = this.game.add.audio("congrats", 0.6)
         
         let loop = this.game.add.audio("loop", 0.25)
