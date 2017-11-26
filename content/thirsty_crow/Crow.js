@@ -8,8 +8,14 @@ class Crow {
     preload() {
         this.game.load.atlasJSONHash("main", "assets/crow.png", "assets/crow.json");
         this.game.load.spritesheet("crow", "assets/crow_fly.png", Math.floor(983 / 4), Math.floor(1289 / 4));
+        this.game.load.audio("correct", "assets/sound/correct.ogg", true);
+        this.game.load.audio("wrong", "assets/sound/wrong.ogg", true);
+        this.game.load.audio("congrats", "assets/sound/congratulations.ogg", true);
     }
     create(group) {
+        this.correct = this.game.add.audio("correct", 0.6);
+        this.wrong = this.game.add.audio("wrong", 0.6);
+        this.congrats = this.game.add.audio("congrats", 0.6);
         this.group = group;
         let height = CrowMainGame.HEIGHT;
         let width = CrowMainGame.WIDTH;
@@ -18,9 +24,11 @@ class Crow {
         let rock2 = this.placeImage("rock", 900 - 175, 600, 350, 200);
         rock1.hitArea = new Phaser.Rectangle(-175, -300, 350, 700);
         rock2.hitArea = new Phaser.Rectangle(-175, -300, 350, 700);
+        let sun = this.placeImage("sun", width / 2, 200, 200, 200);
         this.pot = this.placeImage("pot", width / 2, height - 500, 400, 400);
         let potWaterSprite = this.placeImage("pot_filled", width / 2, height - 500, 400, 400);
         let potRocksSprite = this.placeImage("pot_rocks", width / 2, height - 500, 400, 400);
+        this.potBroken = this.placeImage("pot_broken", width / 2, height - 510, 400, 400);
         this.rocksNeededText = this.game.add.bitmapText(width / 2, height - 450, "numbers_200", "", 150, group);
         this.rocksNeededText.anchor.setTo(0.5, 0.5);
         this.potRocks = this.game.add.graphics(0, height, group);
@@ -30,18 +38,19 @@ class Crow {
         this.positionOneRocks();
         this.positionTenRocks();
         let potHolder = this.placeImage("pot_holder", width / 2, height - 190, width * 0.8, 300);
-        let crowGroup = this.game.add.group(group);
-        crowGroup.position.set(width / 2, height / 2 - 300);
-        this.crow = this.game.add.sprite(0, 0, "crow", null, crowGroup);
+        this.crowGroup = this.game.add.group(group);
+        this.crowGroup.position.set(width / 2, height / 2 + 100);
+        this.crow = this.game.add.sprite(0, 0, "crow", null, this.crowGroup);
         this.crow.anchor.setTo(0.5, 1);
+        // this.crow.scale.setTo(0.25, 0.25)
         this.oneRock = this.placeImage("one_rock", 0, 0, 60, 60);
         this.oneRock.visible = false;
         this.tenRock = this.placeImage("ten_rock", 0, 0, 135, 100);
         this.tenRock.visible = false;
         this.crow.animations.add("fly", null);
         this.crow.animations.play("fly", 10, true);
-        this.enableInteractionForRock(rock1, crowGroup, this.oneRock, 1);
-        this.enableInteractionForRock(rock2, crowGroup, this.tenRock, 10);
+        this.enableInteractionForRock(rock1, this.crowGroup, this.oneRock, 1);
+        this.enableInteractionForRock(rock2, this.crowGroup, this.tenRock, 10);
         this.restart();
     }
     enableInteractionForRock(rock, crowGroup, baseRock, rockVal) {
@@ -50,6 +59,12 @@ class Crow {
             if (this.animating)
                 return;
             this.animating = true;
+            if (rockVal == 1) {
+                this.crow.scale.set(-1, 1);
+            }
+            else {
+                this.crow.scale.set(1, 1);
+            }
             this.core.setTicking(false);
             this.game.add.tween(crowGroup).to({ x: rock.x, y: rock.y - 100 }, 500, null, true).onComplete.add(() => {
                 this.crow.animations.stop("fly", true);
@@ -57,10 +72,10 @@ class Crow {
                 crowGroup.addChild(baseRock);
                 baseRock.visible = true;
                 this.game.add.tween(crowGroup).to({ x: this.pot.x, y: this.pot.y - 200 }, 1000, null, true).onComplete.add(() => {
-                    this.animating = false;
                     this.crow.animations.stop("fly");
                     this.crow.animations.play("fly", 10, true);
                     this.game.add.tween(baseRock).to({ y: 80 }, 300, null, true).onComplete.add(() => {
+                        this.animating = false;
                         baseRock.y = 0;
                         baseRock.visible = false;
                         this.incrRocksVolume(rockVal);
@@ -77,22 +92,28 @@ class Crow {
         this.potRocks.clear();
         let rocksHeight = fullSize * (this.rocksVol) / 100;
         if (this.rocksVol == this.rocksVolNeeded) {
+            this.correct.play();
             this.rocksNeededText.text = "";
             this.potWater.beginFill(0xFFFFFF, 1);
             this.potWater.drawRect(0, -325 - fullSize - 100, 1000, 100);
             this.potWater.endFill();
             this.core.incrScore(10);
-            window.setTimeout(() => {
-                this.restart();
-            }, 500);
+            this.crow.scale.set(-1, 1);
+            this.game.add.tween(this.crowGroup).to({ x: this.pot.x + 200, y: this.pot.y }, 100, null, true).onComplete.add(() => {
+                window.setTimeout(() => {
+                    this.restart();
+                }, 1800);
+            });
         }
         else if (this.rocksVol > this.rocksVolNeeded) {
+            this.wrong.play();
             this.rocksNeededText.text = "";
             rocksHeight = fullSize;
             waterHeight = 0;
+            this.potBroken.visible = true;
             window.setTimeout(() => {
                 this.restart();
-            }, 500);
+            }, 800);
         }
         else {
             this.rocksNeededText.text = String(this.rocksVolNeeded - this.rocksVol);
@@ -138,14 +159,20 @@ class Crow {
     restart() {
         this.currentRound++;
         if (this.currentRound == 10) {
+            this.congrats.play();
             this.core.positionInPop();
         }
         else {
+            this.animating = true;
             this.rocksVolNeeded = this.game.rnd.integerInRange(10, 90);
             this.rocksVol = 0;
             this.incrRocksVolume(0);
-            this.core.setTicking(true);
+            this.game.add.tween(this.crowGroup).to({ x: CrowMainGame.WIDTH / 2, y: CrowMainGame.HEIGHT / 2 }, 400, null, true).onComplete.add(() => {
+                this.animating = false;
+                this.core.setTicking(true);
+            });
         }
+        this.potBroken.visible = false;
     }
     placeImage(name, x, y, width, height) {
         let size = this.game.cache.getFrameByName("main", name);
