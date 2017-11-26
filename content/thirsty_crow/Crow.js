@@ -11,7 +11,7 @@ class Crow {
         this.game.load.audio("correct", "assets/sound/correct.ogg", true);
         this.game.load.audio("wrong", "assets/sound/wrong.ogg", true);
         this.game.load.audio("congrats", "assets/sound/congratulations.ogg", true);
-        this.game.load.audio("loop", "assets/sound/Farm Frolics.wav", true);
+        this.game.load.audio("loop", "assets/sound/Farm Frolics.ogg", true);
     }
     create(group) {
         this.correct = this.game.add.audio("correct", 0.6);
