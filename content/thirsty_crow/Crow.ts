@@ -143,7 +143,6 @@ class Crow {
         rock.events.onInputUp.add(() => {
             if (this.animating) return
             this.animating = true
-            this.wings.volume = 0.6
             if (rockVal == 1) {
                 this.crow.scale.set(-1,1)
             } else {
@@ -162,7 +161,7 @@ class Crow {
                     this.game.add.tween(baseRock).to({ y: 80}, 300, null, true).onComplete.add( () => {
                         this.splash.play()
                         this.animating = false
-                        this.wings.volume = 0.3
+                        
                         baseRock.y = 0
                         baseRock.visible = false
                         this.incrRocksVolume(rockVal)
