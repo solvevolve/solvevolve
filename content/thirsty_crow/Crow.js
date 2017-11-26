@@ -11,11 +11,14 @@ class Crow {
         this.game.load.audio("correct", "assets/sound/correct.ogg", true);
         this.game.load.audio("wrong", "assets/sound/wrong.ogg", true);
         this.game.load.audio("congrats", "assets/sound/congratulations.ogg", true);
+        this.game.load.audio("loop", "assets/sound/Farm Frolics.wav", true);
     }
     create(group) {
         this.correct = this.game.add.audio("correct", 0.6);
         this.wrong = this.game.add.audio("wrong", 0.6);
         this.congrats = this.game.add.audio("congrats", 0.6);
+        let loop = this.game.add.audio("loop", 0.25);
+        loop.play(null, null, 0.3, true);
         this.group = group;
         let height = CrowMainGame.HEIGHT;
         let width = CrowMainGame.WIDTH;
