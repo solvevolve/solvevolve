@@ -14,6 +14,7 @@ class Crow {
         this.game.load.audio("loop", "assets/sound/Farm Frolics.ogg", true);
         this.game.load.audio("splash", "assets/sound/splash.wav", true);
         this.game.load.audio("wings", "assets/sound/wings.mp3", true);
+        this.game.load.audio("wings_faster", "assets/sound/wings_faster.ogg", true);
     }
     create(group) {
         this.correct = this.game.add.audio("correct");
@@ -29,6 +30,7 @@ class Crow {
         // loop.play()
         this.wings = this.game.add.audio("wings");
         this.wings.play(null, 0, 0.3, true);
+        this.wingsFaster = this.game.add.audio("wings_faster");
         this.group = group;
         let height = CrowMainGame.HEIGHT;
         let width = CrowMainGame.WIDTH;
@@ -82,9 +84,13 @@ class Crow {
             this.game.add.tween(crowGroup).to({ x: rock.x, y: rock.y - 100 }, 500, null, true).onComplete.add(() => {
                 this.crow.animations.stop("fly", true);
                 this.crow.animations.play("fly", 30, true);
+                this.wings.stop();
+                this.wingsFaster.play(null, 0, 0.3, true);
                 crowGroup.addChild(baseRock);
                 baseRock.visible = true;
                 this.game.add.tween(crowGroup).to({ x: this.pot.x, y: this.pot.y - 200 }, 1000, null, true).onComplete.add(() => {
+                    this.wingsFaster.stop();
+                    this.wings.play(null, 0, 0.3, true);
                     this.crow.animations.stop("fly");
                     this.crow.animations.play("fly", 10, true);
                     this.game.add.tween(baseRock).to({ y: 80 }, 300, null, true).onComplete.add(() => {
