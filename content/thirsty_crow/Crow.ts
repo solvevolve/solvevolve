@@ -223,7 +223,7 @@ class Crow {
         } else if (this.rocksVol > this.rocksVolNeeded) {
 
             this.game.add.audio("breaking").play().onStop.add( () => {
-                this.wrong.play()
+                // this.wrong.play()
             })
             
 
@@ -233,7 +233,7 @@ class Crow {
             this.potBroken.visible = true
             window.setTimeout(() => {
                 this.restart()
-            }, 800)
+            }, 1200)
         }  else {
             this.rocksNeededText.text = String(this.rocksVolNeeded - this.rocksVol)
         }

@@ -1,77 +1,82 @@
 {
 "frames": {
 	"background": {
-		"frame": {"x":602, "y":602, "w":572, "h":1008},
+		"frame": {"x":1204, "y":0, "w":572, "h":1008},
 		"spriteSourceSize": {"x":0,"y":0,"w":572,"h":1008},
 		"sourceSize": {"w":572,"h":1008}
 	},
 	"crow": {
-		"frame": {"x":1204, "y":0, "w":186, "h":227},
+		"frame": {"x":912, "y":0, "w":186, "h":227},
 		"spriteSourceSize": {"x":0,"y":0,"w":186,"h":227},
 		"sourceSize": {"w":186,"h":227}
 	},
 	"one_rock": {
-		"frame": {"x":62, "y":1718, "w":60, "h":60},
+		"frame": {"x":62, "y":1712, "w":60, "h":60},
 		"spriteSourceSize": {"x":0,"y":0,"w":60,"h":60},
 		"sourceSize": {"w":60,"h":60}
 	},
 	"popup": {
-		"frame": {"x":0, "y":1414, "w":450, "h":200},
+		"frame": {"x":602, "y":1214, "w":450, "h":200},
 		"spriteSourceSize": {"x":0,"y":0,"w":450,"h":200},
 		"sourceSize": {"w":450,"h":200}
 	},
 	"pot": {
-		"frame": {"x":0, "y":602, "w":600, "h":600},
+		"frame": {"x":0, "y":401, "w":600, "h":600},
 		"spriteSourceSize": {"x":0,"y":0,"w":600,"h":600},
 		"sourceSize": {"w":600,"h":600}
 	},
 	"pot_broken": {
-		"frame": {"x":1176, "y":998, "w":275, "h":657},
+		"frame": {"x":1467, "y":1010, "w":275, "h":657},
 		"spriteSourceSize": {"x":0,"y":0,"w":275,"h":657},
 		"sourceSize": {"w":275,"h":657}
 	},
 	"pot_filled": {
-		"frame": {"x":602, "y":0, "w":600, "h":600},
+		"frame": {"x":602, "y":401, "w":600, "h":600},
 		"spriteSourceSize": {"x":0,"y":0,"w":600,"h":600},
 		"sourceSize": {"w":600,"h":600}
 	},
 	"pot_holder": {
-		"frame": {"x":0, "y":1204, "w":558, "h":208},
-		"spriteSourceSize": {"x":0,"y":0,"w":558,"h":208},
-		"sourceSize": {"w":558,"h":208}
+		"frame": {"x":602, "y":1003, "w":559, "h":209},
+		"spriteSourceSize": {"x":0,"y":0,"w":559,"h":209},
+		"sourceSize": {"w":559,"h":209}
 	},
 	"pot_rocks": {
-		"frame": {"x":0, "y":0, "w":600, "h":600},
+		"frame": {"x":0, "y":1003, "w":600, "h":600},
 		"spriteSourceSize": {"x":0,"y":0,"w":600,"h":600},
 		"sourceSize": {"w":600,"h":600}
 	},
 	"replay": {
-		"frame": {"x":137, "y":1616, "w":100, "h":100},
+		"frame": {"x":137, "y":1610, "w":100, "h":100},
 		"spriteSourceSize": {"x":0,"y":0,"w":100,"h":100},
 		"sourceSize": {"w":100,"h":100}
 	},
+	"rock-17": {
+		"frame": {"x":0, "y":0, "w":910, "h":399},
+		"spriteSourceSize": {"x":0,"y":0,"w":910,"h":399},
+		"sourceSize": {"w":910,"h":399}
+	},
 	"rock": {
-		"frame": {"x":452, "y":1612, "w":418, "h":185},
+		"frame": {"x":602, "y":1416, "w":418, "h":185},
 		"spriteSourceSize": {"x":0,"y":0,"w":418,"h":185},
 		"sourceSize": {"w":418,"h":185}
 	},
 	"starEmpty": {
-		"frame": {"x":124, "y":1718, "w":60, "h":60},
+		"frame": {"x":0, "y":1712, "w":60, "h":60},
 		"spriteSourceSize": {"x":0,"y":0,"w":60,"h":60},
 		"sourceSize": {"w":60,"h":60}
 	},
 	"starGold": {
-		"frame": {"x":0, "y":1718, "w":60, "h":60},
+		"frame": {"x":124, "y":1712, "w":60, "h":60},
 		"spriteSourceSize": {"x":0,"y":0,"w":60,"h":60},
 		"sourceSize": {"w":60,"h":60}
 	},
 	"sun": {
-		"frame": {"x":1176, "y":602, "w":411, "h":394},
+		"frame": {"x":1054, "y":1214, "w":411, "h":394},
 		"spriteSourceSize": {"x":0,"y":0,"w":411,"h":394},
 		"sourceSize": {"w":411,"h":394}
 	},
 	"ten_rock": {
-		"frame": {"x":0, "y":1616, "w":135, "h":100},
+		"frame": {"x":0, "y":1610, "w":135, "h":100},
 		"spriteSourceSize": {"x":0,"y":0,"w":135,"h":100},
 		"sourceSize": {"w":135,"h":100}
 	}
@@ -79,7 +84,7 @@
 },
 "meta": {
 	"image": "../crow",
-	"size": {"w": 1589, "h": 1799},
+	"size": {"w": 1778, "h": 1774},
 	"scale": "1"
 }
 }
