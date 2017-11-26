@@ -12,13 +12,23 @@ class Crow {
         this.game.load.audio("wrong", "assets/sound/wrong.ogg", true);
         this.game.load.audio("congrats", "assets/sound/congratulations.ogg", true);
         this.game.load.audio("loop", "assets/sound/Farm Frolics.ogg", true);
+        this.game.load.audio("splash", "assets/sound/splash.wav", true);
+        this.game.load.audio("wings", "assets/sound/wings.mp3", true);
     }
     create(group) {
-        this.correct = this.game.add.audio("correct", 0.6);
-        this.wrong = this.game.add.audio("wrong", 0.6);
-        this.congrats = this.game.add.audio("congrats", 0.6);
-        let loop = this.game.add.audio("loop", 0.25);
-        loop.play(null, null, 0.3, true);
+        this.correct = this.game.add.audio("correct");
+        this.correct.volume = 0.4;
+        this.wrong = this.game.add.audio("wrong");
+        this.wrong.volume = 0.4;
+        this.splash = this.game.add.audio("splash");
+        this.splash.volume = 0.2;
+        this.congrats = this.game.add.audio("congrats");
+        this.congrats.volume = 0.2;
+        let loop = this.game.add.audio("loop");
+        loop.volume = 0.1;
+        // loop.play()
+        this.wings = this.game.add.audio("wings");
+        this.wings.play(null, 0, 0.3, true);
         this.group = group;
         let height = CrowMainGame.HEIGHT;
         let width = CrowMainGame.WIDTH;
@@ -62,6 +72,7 @@ class Crow {
             if (this.animating)
                 return;
             this.animating = true;
+            this.wings.volume = 0.6;
             if (rockVal == 1) {
                 this.crow.scale.set(-1, 1);
             }
@@ -78,7 +89,9 @@ class Crow {
                     this.crow.animations.stop("fly");
                     this.crow.animations.play("fly", 10, true);
                     this.game.add.tween(baseRock).to({ y: 80 }, 300, null, true).onComplete.add(() => {
+                        this.splash.play();
                         this.animating = false;
+                        this.wings.volume = 0.3;
                         baseRock.y = 0;
                         baseRock.visible = false;
                         this.incrRocksVolume(rockVal);
