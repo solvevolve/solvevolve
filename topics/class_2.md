@@ -1,5 +1,7 @@
 # Class 2
 
+http://ncertbooks.prashanthellina.com/class_2.Mathematics.MathMagic/index.html
+
 * ## What is Long, What is Round ? 
 Getting a feel for objects and their shape. 
 DP: Tough to make a game for it. Ignoring it
